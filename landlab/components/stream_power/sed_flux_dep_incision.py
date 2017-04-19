@@ -341,6 +341,8 @@ class SedDepEroder(Component):
         self.count_active_links = np.zeros_like(
             self.link_S_with_trailing_blank, dtype=int)
         self.count_active_links[:-1] = 1
+#        K_sp = 1.e-6
+#        print( 'K_sp', K_sp)
 
         self._K_unit_time = K_sp/31557600.
         # ^...because we work with dt in seconds
