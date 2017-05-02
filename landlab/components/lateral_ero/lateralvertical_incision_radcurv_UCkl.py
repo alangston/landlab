@@ -38,8 +38,8 @@ so these values need not be passed in.  Elevationare eroded and sent back.
 from landlab import ModelParameterDictionary
 #from landlab.components.flow_routing.flow_routing_D8 import RouteFlowD8
 from landlab.components.flow_routing.route_flow_dn import FlowRouter
-from landlab.components.rad_curv.node_finder2 import Node_Finder2
-from landlab.components.rad_curv.radius_curv_dz import radius_curv_dz
+from landlab.components.lateral_ero.node_finder2 import Node_Finder2
+#from landlab.components.rad_curv.radius_curv_dz import radius_curv_dz
 #from landlab.components.flow_accum.flow_accumulation2 import AccumFlow
 from landlab.utils import structured_grid
 import numpy as np
@@ -130,7 +130,7 @@ class LateralVerticalIncisionRD(object):
         dx=grid.dx
         nr=grid.number_of_node_rows
         nc=grid.number_of_node_columns
-        interior_nodes = grid.get_core_nodes()
+        interior_nodes = grid.core_nodes
         boundary_nodes=structured_grid.boundary_nodes((nr,nc))
         #clear qsin for next loop
         qsin = grid.zeros(centering='node')
