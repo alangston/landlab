@@ -37,9 +37,9 @@ so these values need not be passed in.  Elevationare eroded and sent back.
 #import landlab
 from landlab import ModelParameterDictionary
 #from landlab.components.flow_routing.flow_routing_D8 import RouteFlowD8
-from landlab.components.flow_routing.route_flow_dn import FlowRouter
-from landlab.components.lateral_ero.node_finder2 import Node_Finder2
-#from landlab.components.rad_curv.radius_curv_dz import radius_curv_dz
+from landlab.components.flow_routing import FlowRouter
+from landlab.components.lateral_erosion.node_finder2 import Node_Finder2
+
 #from landlab.components.flow_accum.flow_accumulation2 import AccumFlow
 from landlab.utils import structured_grid
 import numpy as np
@@ -89,7 +89,7 @@ class LateralVerticalIncisionRD(object):
     	close()
 
 
-    def run_one_storm(self, grid, z, vol_lat, rainrate=None, storm_dur=None, qsinlet=None, inlet_area=None, Klr=None):
+    def run_one_storm(self, grid, z, vol_lat, rainrate=None, storm_dur=None, qsinlet=None, inlet_area=None):
 
         if rainrate==None:
             rainrate = self.rainfall_myr
@@ -101,12 +101,10 @@ class LateralVerticalIncisionRD(object):
             qsinlet=self.qsinlet
         if inlet_area==None:
             inlet_area=self.inlet_area
-        if Klr==None:    #Added10/9 to allow changing rainrate (indirectly this way.)
-            Klr=self.Klr
 
 
         Kv=self.Kv
-        #Klr=self.Klr
+        Klr=self.Klr
         frac = self.frac
         qsin=self.qsin
         qt=self.qt
@@ -118,12 +116,11 @@ class LateralVerticalIncisionRD(object):
         #still need to calculate runoff for Q and water depth calculation
         kw=10.
         F=0.02 
-        runoff=(Klr*F/kw)**2        
+        runoffms=(Klr*F/kw)**2        
         #September 11. Making Klratio dependent on alpha and rain rate calculated from alpha
         #september 28, taking this back out
         #Klr=runoff**0.5*kw/F
         #ratio of lateral to vertical K parameters
-        #print "KLKV", Klr
         #print "runoff", runoff
         Kl=Kv*Klr
 
@@ -145,23 +142,30 @@ class LateralVerticalIncisionRD(object):
         #instantiate variable of type RouteFlowDNClass
         flow_router = FlowRouter(grid)
 
-        #4.6.14: also passing it areas of nodes for inlet nodes
-        node_area=dx**2 * np.ones(grid.number_of_nodes)
-        node_area[inlet_node]=inlet_area
-        #node_area=node_area[interior_nodes]
-        numcel=grid.number_of_cells
-        numnode=grid.number_of_nodes
+        # 4/24/2017 add inlet to change drainage area with spatially variable runoff rate
+        #runoff is an array with values of the area of each node (dx**2)
+        runoffinlet=np.ones(grid.number_of_nodes)*dx**2
+        #Change the runoff at the inlet node to node area + inlet node
+        runoffinlet[inlet_node]=+inlet_area
+        _=grid.add_field('node', 'water__unit_flux_in', runoffinlet,
+                     noclobber=False)
         
         
         
-        flowdirs, drain_area, q, max_slopes, s, receiver_link = flow_router.route_flow(elevs=z, node_cell_area=node_area, runoff_rate=runoff)
-        #line below added for analytical solution REMOVE FOR REAL RUNS!
-        #drain_area = np.ones(len(drain_area))*dx**2
+        flow_router.route_flow(method='D8')
+        #flow__upstream_node_order is node array contianing downstream to upstream order list of node ids
+        s=grid.at_node['flow__upstream_node_order']
+        drain_area_fr=grid.at_node['drainage_area']    #renamed this drainage area set by flow router
+        max_slopes=grid.at_node['topographic__steepest_slope']
+        q=grid.at_node['surface_water__discharge']
+        flowdirs=grid.at_node['flow__receiver_node']
+        drain_area=q/dx**2    #this is the drainage area that I need for code below with an inlet set by spatially varible runoff. 
+
         #order interior nodes
         #find interior nodes in downstream ordered vector s
 
         #make a list l, where node status is interior in s
-        l=s[np.where((grid.node_status[s] == 0))[0]]
+        l=s[np.where((grid.status_at_node[s] == 0))[0]]
         #this misses an interior nodes that is set as constant value, 1
         #but the below grabs nodes that are set as open boundaries. no good for me here
         #l2=s[np.where((grid.node_status[s] == 1))[0]]
@@ -189,7 +193,6 @@ class LateralVerticalIncisionRD(object):
                     qsin[i]=qsinlet
                     #print "qsin[inlet]", qsin[i]
                     #print "inlet area", drain_area[i]
-
                 #calc deposition and erosion
                 #dzver is vertical erosion/deposition only
                 dep = alph*qsin[i]/drain_area[i]
@@ -199,50 +202,50 @@ class LateralVerticalIncisionRD(object):
 
                 #calculate transport capacity
                 qt[i]=Kv*drain_area[i]**(3./2.)*max_slopes[i]/alph
-							
+
                 #lateral erosion component
                 #potential lateral erosion initially set to 0
                 petlat=0.                
                 #bank height initially set to 0
-                #z_bank=0.0
+                z_bank=0.0
                 #**********ADDED FOR WATER DEPTH CHANGE***************
                 #water depth
-                wd=0.4*q[i]**0.35
+                wd=0.4*(drain_area[i]*runoffms)**0.35
                 #print "i", i
                 #print "wd[i]", wd
                 
+                if Klr != 0.0:
                 #if node i flows downstream, continue. That is, if node i is the 
                 #first cell at the top of the drainage network, don't go into this
                 # loop because in this case, node i won't have a "donor" node found
                 # in NodeFinder and needed to calculate the angle difference
-                if i in flowdirs:
+                    if i in flowdirs:
                 #if flowdirs[i] == i:
                     #Node_finder picks the lateral node to erode based on angle
                     # between segments between three nodes
-                    [lat_node, inv_rad_curv]=Node_Finder2(grid, i, flowdirs, drain_area)
+                        [lat_node, inv_rad_curv]=Node_Finder2(grid, i, flowdirs, drain_area)
                     #node_finder returns the lateral node ID and the radius of curvature
-                    lat_nodes[i]=lat_node
+                        lat_nodes[i]=lat_node
                     #if the lateral node is not 0 continue. lateral node may be 
                     # 0 if a boundary node was chosen as a lateral node. then 
                     # radius of curavature is also 0 so there is no lateral erosion
-                    if lat_node!=0.0:
+                        if lat_node!=0.0:
                         #if the elevation of the lateral node is higher than primary node,
                         # calculate a new potential lateral erosion (L/T), which is negative
-                        if z[lat_node] > z[i]:                           
+                            if z[lat_node] > z[i]:                           
                                                         
-                            petlat=-Kl*drain_area[i]*max_slopes[i]*inv_rad_curv
+                                petlat=-Kl*drain_area[i]*max_slopes[i]*inv_rad_curv
                             
                             #bank height. 
-                            #z_bank=z[lat_node]-z[i]
+                                z_bank=z[lat_node]-z[i]
                             
                             #the calculated potential lateral erosion is mutiplied by the length of the node 
                             #and the bank height, then added to an array, vol_lat_dt, for volume eroded 
                             #laterally  *per year* at each node. This vol_lat_dt is reset to zero for 
                             #each timestep loop. vol_lat_dt is added to itself more than one primary nodes are
                             # laterally eroding this lat_node                       
-                            vol_lat_dt[lat_node]+=abs(petlat)*dx*wd                           
-                            
-                		
+                                vol_lat_dt[lat_node]+=abs(petlat)*dx*wd                           
+
                 # the following is always done, even if lat_node is 0 or lat_node 
                 # lower than primary node. however, petlat is 0 in these cases
                     
@@ -318,20 +321,16 @@ class LateralVerticalIncisionRD(object):
                 print "vol_lat_dt", vol_lat_dt
                 print "vol_lat after", vol_lat
                 
-            
-            
-                        
-            for i in dwnst_nodes:
-                lat_node=lat_nodes[i]
-                wd=0.4*q[i]**0.35
-                if lat_node!=0.0:
+            if Klr != 0.0:
+                for i in dwnst_nodes:
+                    lat_node=lat_nodes[i]
+                    if lat_node!=0.0:
                         if z[lat_node] > z[i]:                        
-                            
-                            #September 11: changing so that voldiff is the volume that must be eroded 
-                            # and the upper limit isn't the top of the node, but the water height at node i
-                            # this would represent undercutting, slumping, and instant removal. 
-                            #hmm, I have a mass balance problem here. 
-                            voldiff=(z[i]+wd-z[flowdirs[i]])*dx**2
+                            #vol_diff is the volume that must be eroded from lat_node so that its
+                            # elevation is the same as primary node
+                            #August 23: Changing from above so that lateral node will be lower
+                            # than the downstream node of the primary node. 
+                            voldiff=(z[lat_node]-z[flowdirs[i]])*dx**2
                             #if the total volume eroded from lat_node is greater than the volume 
                             # needed to be removed to make node equal elevation, 
                             # then instantaneously remove this height from lat node. already has timestep in it    
@@ -367,19 +366,31 @@ class LateralVerticalIncisionRD(object):
             if time > 0.9999*storm_dur:
                 time = storm_dur
                 #recalculate flow directions for plotting
-                flowdirs, drain_area, q, max_slopes, s, receiver_link = flow_router.route_flow(elevs=z, node_cell_area=node_area, runoff_rate=runoff)
+                flow_router.route_flow(method='D8')
+        #flow__upstream_node_order is node array contianing downstream to upstream order list of node ids
+                s=grid.at_node['flow__upstream_node_order']
+                drain_area_fr=grid.at_node['drainage_area']    #renamed this drainage area set by flow router
+                max_slopes=grid.at_node['topographic__steepest_slope']
+                q=grid.at_node['surface_water__discharge']
+                flowdirs=grid.at_node['flow__receiver_node']
+                drain_area=q/dx**2    #this is the drainage area that I need for code below with an inlet set by spatially varible runoff. 
                 #recalculate downstream order
-                dsind = np.where((s >= min(interior_nodes)) & (s <= max(interior_nodes)))
-                l=s[np.where((grid.node_status[s] == 0))[0]]
+                l=s[np.where((grid.status_at_node[s] == 0))[0]]
                 dwnst_nodes=l
                 dwnst_nodes=dwnst_nodes[::-1]
             else:
                 dt = storm_dur - time
                 #recalculate flow directions
-                flowdirs, drain_area, q, max_slopes, s, receiver_link = flow_router.route_flow(elevs=z, node_cell_area=node_area, runoff_rate=runoff)
+                flow_router.route_flow(method='D8')
+        #flow__upstream_node_order is node array contianing downstream to upstream order list of node ids
+                s=grid.at_node['flow__upstream_node_order']
+                drain_area_fr=grid.at_node['drainage_area']    #renamed this drainage area set by flow router
+                max_slopes=grid.at_node['topographic__steepest_slope']
+                q=grid.at_node['surface_water__discharge']
+                flowdirs=grid.at_node['flow__receiver_node']
+                drain_area=q/dx**2
                 #recalculate downstream order
-                dsind = np.where((s >= min(interior_nodes)) & (s <= max(interior_nodes)))
-                l=s[np.where((grid.node_status[s] == 0))[0]]
+                l=s[np.where((grid.status_at_node[s] == 0))[0]]
                 dwnst_nodes=l
                 dwnst_nodes=dwnst_nodes[::-1]
                 #clear qsin for next loop
@@ -390,5 +401,5 @@ class LateralVerticalIncisionRD(object):
                 vol_lat_dt=np.zeros(grid.number_of_nodes)
                 dzver=np.zeros(grid.number_of_nodes)
 	        
-    	
+        
         return z, qt, qsin, dzdt, dzlat, flowdirs, drain_area, dwnst_nodes, max_slopes, dt       

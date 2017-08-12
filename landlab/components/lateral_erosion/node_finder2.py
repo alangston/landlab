@@ -12,10 +12,10 @@ vertical erosion: Evert=(1-Elat)*E
 """
 
 import numpy as np
-from landlab.components.lateral_ero.angle_finder import angle_finder
-from landlab.components.lateral_ero.straight_node_finder import StraightNode
-from landlab.components.lateral_ero.fortyfive_node import FortyfiveNode
-from landlab.components.lateral_ero.ninety_node import NinetyNode
+from landlab.components.lateral_erosion.angle_finder import angle_finder
+from landlab.components.lateral_erosion.straight_node_finder import StraightNode
+from landlab.components.lateral_erosion.fortyfive_node import FortyfiveNode
+from landlab.components.lateral_erosion.ninety_node import NinetyNode
 
 
 def Node_Finder2(grid, i, flowdirs, drain_area):
@@ -120,5 +120,5 @@ def Node_Finder2(grid, i, flowdirs, drain_area):
 
     #below added 9/18/2014
     dx=grid.dx
-    radcurv_angle=radcurv_angle/dx
+    radcurv_angle=radcurv_angle/dx    #May24, 2017: this is actually INVERSE radius of curvature. It works out in the main lateral ero
     return lat_node, radcurv_angle

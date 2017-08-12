@@ -38,7 +38,7 @@ so these values need not be passed in.  Elevationare eroded and sent back.
 from landlab import ModelParameterDictionary
 #from landlab.components.flow_routing.flow_routing_D8 import RouteFlowD8
 from landlab.components.flow_routing import FlowRouter
-from landlab.components.lateral_ero.node_finder2 import Node_Finder2
+from landlab.components.lateral_erosion.node_finder2 import Node_Finder2
 #from landlab.components.radius_curv_dz import radius_curv_dz
 #from landlab.components.flow_accum.flow_accumulation2 import AccumFlow
 from landlab.utils import structured_grid
@@ -284,6 +284,12 @@ class LateralVerticalIncisionRD(object):
                         # calculate a new potential lateral erosion (L/T), which is negative
                             if z[lat_node] > z[i]:                           
                                 petlat=-Kl*drain_area[i]*max_slopes[i]*inv_rad_curv
+#                                print 'petlat before', petlat
+                                #new part July 17, 2017. lateral erosion rate multiplied by wc/dx
+                                wc=kw*(drain_area[i]*runoffms)**0.5
+                                petlat=petlat*(wc/dx)
+#                                print 'wc', wc, 'drain_area[i]', drain_area[i]
+#                                print 'petlat after', petlat
                             
                             #bank height. 
                             #z_bank=z[lat_node]-z[i]
@@ -379,7 +385,7 @@ class LateralVerticalIncisionRD(object):
                 print "vol_lat after", vol_lat
                 
             
-            
+            #this loop determines if enough lateral erosion has happened to change the height of the neighbor node.
             if Klr != 0.0:
 #                print 'warning in lat ero, line 330'
                 for i in dwnst_nodes:

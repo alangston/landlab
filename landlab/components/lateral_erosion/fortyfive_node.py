@@ -2,10 +2,7 @@
 lateral erosion component
 
 needs:
-fraction of bed exposed: fe=(1-qsqt)
-percent lateral erosion of total erosion : Plat=qsqt
-lateral erosion: Elat=Plat*E  (E is total erosion, dzdt)
-vertical erosion: Evert=(1-Elat)*E
+
 
 
 
