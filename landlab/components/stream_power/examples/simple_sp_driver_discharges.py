@@ -53,6 +53,8 @@ fsp = Fsc(mg, './drive_sp_params_discharge.txt')
 # perform the loop (once!)
 for i in range(1):
     fr.route_flow(method='D8')
+    flowdirs=mg.at_node['flow__receiver_node']
+    print(flowdirs)
     my_Q = mg.at_node['surface_water__discharge']*1.
     sp.erode(mg, dt, node_drainage_areas='drainage_area',
              slopes_at_nodes='topographic__steepest_slope',
@@ -61,7 +63,7 @@ for i in range(1):
 
 # print the stream power that was calculated:
 print('stream power values:')
-print(mg.at_node['stream_power_erosion'])
+#print(mg.at_node['stream_power_erosion'])
 
 # Finalize and plot
 elev = mg['node']['topographic__elevation']

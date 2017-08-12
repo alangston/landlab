@@ -9,7 +9,7 @@ from __future__ import print_function
 
 from landlab.components.flow_routing import FlowRouter
 from landlab.components.stream_power import StreamPowerEroder, FastscapeEroder
-from landlab.components.stream_power.fastscape_stream_power import SPEroder as Fsc
+#from landlab.components.stream_power.fastscape_stream_power import SPEroder as Fsc
 from landlab.plot import channel_profile as prf
 
 import numpy
@@ -61,7 +61,10 @@ while elapsed_time < time_to_run:
     mg = fr.route_flow(method='D8')
     #print 'Area: ', numpy.max(mg.at_node['drainage_area'])
     #mg = fsp.erode(mg)
+#    print( 'before', mg.at_node['topographic__elevation'])
     mg,_,_ = sp.erode(mg, dt, node_drainage_areas='drainage_area', slopes_at_nodes='topographic__steepest_slope', K_if_used='K_values')
+#    mg,_,_ = sp.erode(mg, dt, node_drainage_areas='drainage_area', slopes_at_nodes='topographic__steepest_slope', K_if_used='K_values')
+#    print( 'after', mg.at_node['topographic__elevation'])
     #add uplift
     mg.at_node['topographic__elevation'][mg.core_nodes] += uplift*dt
     elapsed_time += dt
@@ -94,9 +97,9 @@ im = pylab.plot(dx*numpy.arange(nrows), elev_r[:,int(ncols//2)])  # display a co
 pylab.title('Vertical cross section')
 
 # Plot topography
-#pylab.figure(1)
-#im = imshow_node_grid(mg, 'topographic_elevation')  # display a colored image
-#print elev_r
+pylab.figure(1)
+im = imshow_node_grid(mg, 'topographic_elevation')  # display a colored image
+print (elev_r)
 
 pylab.show()
 

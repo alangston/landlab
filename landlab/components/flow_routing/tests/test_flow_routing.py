@@ -171,6 +171,7 @@ def setup_internal_closed():
     mg.status_at_node[16] = CLOSED_BOUNDARY
 
     z = mg.node_x.copy()
+    print z
 
     Q_in = np.full(25, 2.)
 
