@@ -94,7 +94,7 @@ def Node_Finder2(grid, i, flowdirs, drain_area):
         if(debug):
             print "this is a sink"
         radcurv_angle=0.
-        lat_node=0.
+        lat_node=0
     if angle_diff==0.0:
         [lat_node, radcurv_angle]=StraightNode(donor, i, receiver, neighbors, diag_neigh)
     if (angle_diff==45.0 or angle_diff==135.0):
@@ -104,7 +104,7 @@ def Node_Finder2(grid, i, flowdirs, drain_area):
 
     if lat_node > 2e9:
         #print "old latnode", lat_node
-        lat_node=0.
+        lat_node=0
         radcurv_angle=0.0
         #print "new lat", lat_node
         #print delta

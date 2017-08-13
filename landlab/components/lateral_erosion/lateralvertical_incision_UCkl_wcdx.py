@@ -73,7 +73,7 @@ class LateralVerticalIncisionRD(object):
         self.Kv = inputs.get('KV_COEFFICIENT', ptype=float)
         self.Klr = inputs.get('KL_RATIO', ptype=float)
         self.rain_duration_yr = inputs.get('RAIN_DURATION_YEARS', ptype=float)
-        self.inlet_node = inputs.get('INLET_NODE', ptype=float)
+        self.inlet_node = inputs.get('INLET_NODE', ptype=int)
         self.inlet_area = inputs.get('INLET_AREA', ptype=float)
         self.qsinlet = inputs.get('QSINLET', ptype=float)
         self.frac = 0.3 #for time step calculations
@@ -136,7 +136,7 @@ class LateralVerticalIncisionRD(object):
         qsin = grid.zeros(centering='node')
         qsqt = grid.zeros(centering='node')
         #eronode=np.zeros(grid.number_of_nodes)
-        lat_nodes=np.zeros(grid.number_of_nodes)
+        lat_nodes=np.zeros(grid.number_of_nodes, dtype=np.int)
         dzlat=np.zeros(grid.number_of_nodes)
         dzver=np.zeros(grid.number_of_nodes)
         vol_lat_dt=np.zeros(grid.number_of_nodes)
@@ -148,6 +148,7 @@ class LateralVerticalIncisionRD(object):
         # 4/24/2017 add inlet to change drainage area with spatially variable runoff rate
         #runoff is an array with values of the area of each node (dx**2)
         runoffinlet=np.ones(grid.number_of_nodes)*dx**2
+#        print 'inlet node', inlet_node
         #Change the runoff at the inlet node to node area + inlet node
         runoffinlet[inlet_node]=+inlet_area
         _=grid.add_field('node', 'water__unit_flux_in', runoffinlet,
@@ -279,7 +280,7 @@ class LateralVerticalIncisionRD(object):
                     #if the lateral node is not 0 continue. lateral node may be 
                     # 0 if a boundary node was chosen as a lateral node. then 
                     # radius of curavature is also 0 so there is no lateral erosion
-                        if lat_node!=0.0:
+                        if lat_node!=0:
                         #if the elevation of the lateral node is higher than primary node,
                         # calculate a new potential lateral erosion (L/T), which is negative
                             if z[lat_node] > z[i]:                           
@@ -391,7 +392,7 @@ class LateralVerticalIncisionRD(object):
                 for i in dwnst_nodes:
                     lat_node=lat_nodes[i]
                     wd=0.4*(drain_area[i]*runoffms)**0.35
-                    if lat_node!=0.0:
+                    if lat_node!=0:
                         if z[lat_node] > z[i]:                        
                             
                             #September 11: changing so that voldiff is the volume that must be eroded 
@@ -484,7 +485,7 @@ class LateralVerticalIncisionRD(object):
                 #clear qsin for next loop
                 qsin = grid.zeros(centering='node')
                 qt = grid.zeros(centering='node')
-                lat_nodes=np.zeros(grid.number_of_nodes)
+                lat_nodes=np.zeros(grid.number_of_nodes, dtype=np.int)
                 dzlat=np.zeros(grid.number_of_nodes)
                 vol_lat_dt=np.zeros(grid.number_of_nodes)
                 dzver=np.zeros(grid.number_of_nodes)

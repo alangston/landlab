@@ -73,7 +73,7 @@ class LateralVerticalIncisionRD(object):
         self.Kv = inputs.get('KV_COEFFICIENT', ptype=float)
         self.Klr = inputs.get('KL_RATIO', ptype=float)
         self.rain_duration_yr = inputs.get('RAIN_DURATION_YEARS', ptype=float)
-        self.inlet_node = inputs.get('INLET_NODE', ptype=float)
+        self.inlet_node = inputs.get('INLET_NODE', ptype=int)
         self.inlet_area = inputs.get('INLET_AREA', ptype=float)
         self.qsinlet = inputs.get('QSINLET', ptype=float)
         self.frac = 0.3 #for time step calculations
@@ -136,7 +136,7 @@ class LateralVerticalIncisionRD(object):
         qsin = grid.zeros(centering='node')
         qsqt = grid.zeros(centering='node')
         #eronode=np.zeros(grid.number_of_nodes)
-        lat_nodes=np.zeros(grid.number_of_nodes)
+        lat_nodes=np.zeros(grid.number_of_nodes, dtype=np.int)
         dzlat=np.zeros(grid.number_of_nodes)
         dzver=np.zeros(grid.number_of_nodes)
         vol_lat_dt=np.zeros(grid.number_of_nodes)
@@ -385,7 +385,7 @@ class LateralVerticalIncisionRD(object):
                 for i in dwnst_nodes:
                     lat_node=lat_nodes[i]
                     wd=0.4*(drain_area[i]*runoffms)**0.35
-                    if lat_node!=0.0:
+                    if lat_node!=0:
                         if z[lat_node] > z[i]:                        
                             
                             #changing so that voldiff is the volume that must be eroded 
@@ -478,7 +478,7 @@ class LateralVerticalIncisionRD(object):
                 #clear qsin for next loop
                 qsin = grid.zeros(centering='node')
                 qt = grid.zeros(centering='node')
-                lat_nodes=np.zeros(grid.number_of_nodes)
+                lat_nodes=np.zeros(grid.number_of_nodes, dtype=np.int)
                 dzlat=np.zeros(grid.number_of_nodes)
                 vol_lat_dt=np.zeros(grid.number_of_nodes)
                 dzver=np.zeros(grid.number_of_nodes)
