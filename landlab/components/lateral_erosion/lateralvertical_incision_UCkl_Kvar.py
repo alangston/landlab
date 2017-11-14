@@ -138,7 +138,6 @@ class LateralVerticalIncisionRD(object):
         qsin = grid.zeros(centering='node')
         qsqt = grid.zeros(centering='node')
         #eronode=np.zeros(grid.number_of_nodes)
-        lat_nodes=np.zeros(grid.number_of_nodes)
         lat_nodes=np.zeros(grid.number_of_nodes, dtype=np.int)
         dzlat=np.zeros(grid.number_of_nodes)
         dzver=np.zeros(grid.number_of_nodes)
