@@ -34,9 +34,10 @@ def channel_nodes(grid, steepest_nodes, drainage_area, flow_receiver, number_of_
     #starting_nodes = boundary_nodes[numpy.argsort(drainage_area[boundary_nodes])[-top_two_pc:]]
     starting_nodes = boundary_nodes[numpy.argsort(
         drainage_area[boundary_nodes])[-number_of_channels:]]
-
+    print 'starting_nodes', starting_nodes
     profile_IDs = []
     for i in starting_nodes:
+        print 'i', i
         j = i
         data_store = []
         while 1:
@@ -44,6 +45,7 @@ def channel_nodes(grid, steepest_nodes, drainage_area, flow_receiver, number_of_
             supplying_nodes = numpy.where(flow_receiver == j)[0]
             supplying_nodes = supplying_nodes[
                 numpy.where(supplying_nodes != i)]
+            print 'supplying nodes', supplying_nodes
             max_drainage = numpy.argmax(drainage_area[supplying_nodes])
             if drainage_area[supplying_nodes[max_drainage]] < threshold:
                 break

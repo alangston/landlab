@@ -279,7 +279,7 @@ class LateralVerticalIncisionRD(object):
                     #if the lateral node is not 0 continue. lateral node may be 
                     # 0 if a boundary node was chosen as a lateral node. then 
                     # radius of curavature is also 0 so there is no lateral erosion
-                        if lat_node!=0:
+                        if lat_node!=0.0:
                         #if the elevation of the lateral node is higher than primary node,
                         # calculate a new potential lateral erosion (L/T), which is negative
                             if z[lat_node] > z[i]:                           
@@ -388,16 +388,16 @@ class LateralVerticalIncisionRD(object):
                     if lat_node!=0:
                         if z[lat_node] > z[i]:                        
                             
-                            #September 11: changing so that voldiff is the volume that must be eroded 
+                            #changing so that voldiff is the volume that must be eroded 
                             # and the upper limit isn't the top of the node, but the water height at node i
                             # this would represent undercutting, slumping, and instant removal. 
-                            #hmm, I have a mass balance problem here. 
-                            voldiff=(z[i]+wd-z[flowdirs[i]])*dx**2
+                            #8/13/2017: changing from z[flowdirs] to just z[i]
+                            voldiff=(z[i]+wd-z[i])*dx**2
                             #if the total volume eroded from lat_node is greater than the volume 
                             # needed to be removed to make node equal elevation, 
                             # then instantaneously remove this height from lat node. already has timestep in it    
                             if vol_lat[lat_node]>=voldiff:
-                                dzlat[lat_node]=z[flowdirs[i]]-z[lat_node]-0.001
+                                dzlat[lat_node]=z[flowdirs[i]]-z[lat_node]
                                 if(0):
                                     print "chunk of lateral erosion occured"                        
                                     print "node", lat_node

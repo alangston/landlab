@@ -39,7 +39,7 @@ from landlab import ModelParameterDictionary
 #from landlab.components.flow_routing.flow_routing_D8 import RouteFlowD8
 #from landlab.components.flow_routing.route_flow_dn import FlowRouter
 from landlab.components.flow_routing import FlowRouter
-from landlab.components.lateral_ero.node_finder2 import Node_Finder2
+from landlab.components.lateral_erosion.node_finder2 import Node_Finder2
 #from landlab.components.rad_curv.radius_curv_dz import radius_curv_dz
 #from landlab.components.flow_accum.flow_accumulation2 import AccumFlow
 from landlab.utils import structured_grid
@@ -73,7 +73,7 @@ class LateralVerticalIncisionRD(object):
 #        self.Kv = inputs.get('KV_COEFFICIENT', ptype=float)
         self.Klr = inputs.get('KL_RATIO', ptype=float)
         self.rain_duration_yr = inputs.get('RAIN_DURATION_YEARS', ptype=float)
-        self.inlet_node = inputs.get('INLET_NODE', ptype=float)
+        self.inlet_node = inputs.get('INLET_NODE', ptype=int)
         self.inlet_area = inputs.get('INLET_AREA', ptype=float)
         self.qsinlet = inputs.get('QSINLET', ptype=float)
         self.frac = 0.3 #for time step calculations
@@ -94,6 +94,7 @@ class LateralVerticalIncisionRD(object):
         if storm_dur==None:
             storm_dur = self.rain_duration_yr   
         inlet_node=self.inlet_node
+        print "inlet_node1", inlet_node
         #inlet_area=self.inlet_area
         if qsinlet==None:
             qsinlet=self.qsinlet
@@ -138,6 +139,7 @@ class LateralVerticalIncisionRD(object):
         qsqt = grid.zeros(centering='node')
         #eronode=np.zeros(grid.number_of_nodes)
         lat_nodes=np.zeros(grid.number_of_nodes)
+        lat_nodes=np.zeros(grid.number_of_nodes, dtype=np.int)
         dzlat=np.zeros(grid.number_of_nodes)
         dzver=np.zeros(grid.number_of_nodes)
         vol_lat_dt=np.zeros(grid.number_of_nodes)
@@ -150,6 +152,7 @@ class LateralVerticalIncisionRD(object):
         #runoff is an array with values of the area of each node (dx**2)
         runoffinlet=np.ones(grid.number_of_nodes)*dx**2
         #Change the runoff at the inlet node to node area + inlet node
+        print "inlet_node", inlet_node
         runoffinlet[inlet_node]=+inlet_area
         _=grid.add_field('node', 'water__unit_flux_in', runoffinlet,
                      noclobber=False)
@@ -230,7 +233,7 @@ class LateralVerticalIncisionRD(object):
                     #if the lateral node is not 0 continue. lateral node may be 
                     # 0 if a boundary node was chosen as a lateral node. then 
                     # radius of curavature is also 0 so there is no lateral erosion
-                        if lat_node!=0.0:
+                        if lat_node!=0:
                         #if the elevation of the lateral node is higher than primary node,
                         # calculate a new potential lateral erosion (L/T), which is negative
                             if z[lat_node] > z[i]:
@@ -327,7 +330,7 @@ class LateralVerticalIncisionRD(object):
                 for i in dwnst_nodes:
                     lat_node=lat_nodes[i]
                     wd=0.4*(drain_area[i]*runoffms)**0.35
-                    if lat_node!=0.0:
+                    if lat_node!=0:
                         if z[lat_node] > z[i]:
                             
                             #September 11: changing so that voldiff is the volume that must be eroded 
@@ -404,7 +407,7 @@ class LateralVerticalIncisionRD(object):
                 #clear qsin for next loop
                 qsin = grid.zeros(centering='node')
                 qt = grid.zeros(centering='node')
-                lat_nodes=np.zeros(grid.number_of_nodes)
+                lat_nodes=np.zeros(grid.number_of_nodes, dtype=np.int)
                 dzlat=np.zeros(grid.number_of_nodes)
                 vol_lat_dt=np.zeros(grid.number_of_nodes)
                 dzver=np.zeros(grid.number_of_nodes)

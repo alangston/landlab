@@ -72,7 +72,7 @@ class LateralVerticalIncisionRD(object):
         self.Kv = inputs.get('KV_COEFFICIENT', ptype=float)
         self.Klr = inputs.get('KL_RATIO', ptype=float)
         self.rain_duration_yr = inputs.get('RAIN_DURATION_YEARS', ptype=float)
-        self.inlet_node = inputs.get('INLET_NODE', ptype=float)
+        self.inlet_node = inputs.get('INLET_NODE', ptype=int)
         self.inlet_area = inputs.get('INLET_AREA', ptype=float)
         self.qsinlet = inputs.get('QSINLET', ptype=float)
         self.frac = 0.3 #for time step calculations
@@ -133,7 +133,7 @@ class LateralVerticalIncisionRD(object):
         qsin = grid.zeros(centering='node')
         qsqt = grid.zeros(centering='node')
         #eronode=np.zeros(grid.number_of_nodes)
-        lat_nodes=np.zeros(grid.number_of_nodes)
+        lat_nodes=np.zeros(grid.number_of_nodes, dtype=int)
         dzlat=np.zeros(grid.number_of_nodes)
         dzver=np.zeros(grid.number_of_nodes)
         vol_lat_dt=np.zeros(grid.number_of_nodes)
@@ -229,7 +229,7 @@ class LateralVerticalIncisionRD(object):
                     #if the lateral node is not 0 continue. lateral node may be 
                     # 0 if a boundary node was chosen as a lateral node. then 
                     # radius of curavature is also 0 so there is no lateral erosion
-                        if lat_node!=0.0:
+                        if lat_node!=0:
                         #if the elevation of the lateral node is higher than primary node,
                         # calculate a new potential lateral erosion (L/T), which is negative
                             if z[lat_node] > z[i]:                           
@@ -324,7 +324,7 @@ class LateralVerticalIncisionRD(object):
             if Klr != 0.0:
                 for i in dwnst_nodes:
                     lat_node=lat_nodes[i]
-                    if lat_node!=0.0:
+                    if lat_node!=0:
                         if z[lat_node] > z[i]:                        
                             #vol_diff is the volume that must be eroded from lat_node so that its
                             # elevation is the same as primary node
@@ -396,7 +396,7 @@ class LateralVerticalIncisionRD(object):
                 #clear qsin for next loop
                 qsin = grid.zeros(centering='node')
                 qt = grid.zeros(centering='node')
-                lat_nodes=np.zeros(grid.number_of_nodes)
+                lat_nodes=np.zeros(grid.number_of_nodes, dtype=int)
                 dzlat=np.zeros(grid.number_of_nodes)
                 vol_lat_dt=np.zeros(grid.number_of_nodes)
                 dzver=np.zeros(grid.number_of_nodes)
