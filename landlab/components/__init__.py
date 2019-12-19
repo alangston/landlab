@@ -20,7 +20,7 @@ from .gflex import gFlex
 from .groundwater import GroundwaterDupuitPercolator
 from .lake_fill import LakeMapperBarnes
 from .landslides import LandslideProbability
-from .lateral_erosion import LateralEroder
+from .lateral_erosion import (LateralEroder, ValleyWiden)
 from .lithology import LithoLayers, Lithology
 from .nonlinear_diffusion import PerronNLDiffuse
 from .normal_fault import NormalFault
@@ -104,6 +104,7 @@ COMPONENTS = [
     Lithology,
     LithoLayers,
     TransportLengthHillslopeDiffuser,
+    ValleyWiden
 ]
 
 __all__ = [cls.__name__ for cls in COMPONENTS]

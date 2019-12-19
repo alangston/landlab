@@ -796,9 +796,7 @@ class SedDepEroder(Component):
                 dt_this_step = dt_secs - internal_t
                 # ^timestep adjustment is made AFTER the dz calc
                 node_vol_capacities = transport_capacities * dt_this_step
-                #ALL***: below, if we send sediment to vertical erosion because lateral
-                # erosion is running, do not initialize this as zeros. use the 
-                # values sent to the component instead.
+
                 sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self.cell_areas
@@ -899,7 +897,6 @@ class SedDepEroder(Component):
                             # timestep.
 
                         dz[i] -= dz_here
-                        #below is where sed_int_node is updated
                         sed_into_node[flow_receiver[i]] += vol_pass
 
                 break_flag = True
@@ -945,8 +942,7 @@ class SedDepEroder(Component):
                 dt_this_step = dt_secs - internal_t
                 # ^timestep adjustment is made AFTER the dz calc
                 node_vol_capacities = transport_capacities * dt_this_step
-                #ALL: I don't need to change this sed_into_node bc I'll only use MPM
-                # version of this code. This is because MPM has a threshold, which i need.
+
                 sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self.cell_areas
