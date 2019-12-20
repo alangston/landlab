@@ -188,21 +188,21 @@ class ValleyWiden(Component):
                         # nodes are laterally eroding this lat_node
                         # volume of lateral erosion per timestep
                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
+                        vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
                         # vol_diff is the volume that must be eroded from lat_node so that its
                         # elevation is the same as node downstream of primary node
                         # UC model: this would represent undercutting (the water height at
                         # node i), slumping, and instant removal.
-                        if UC == 1:
-                            voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
-                        # TB model: entire lat node must be eroded before lateral erosion
-                        # occurs
-                        if TB == 1:
-                            voldiff = (z[lat_node] - z[flowdirs[i]]) * grid.dx ** 2
-                        # if the total volume eroded from lat_node is greater than the volume
-                        # needed to be removed to make node equal elevation,
-                        # then instantaneously remove this height from lat node. already has
-                        # timestep in it
+                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
+                        debug = 1
+                        if debug:
+                            print("latnode", lat_node)
+                            print("voldiff", voldiff)
+                            print("vol_lat[latnode]", vol_lat[lat_node])
+                        #*******will valley wall collapse?
                         if vol_lat[lat_node] >= voldiff:
+                            #ALL***: ^now this line is just telling me: will this
+                            # valley wall collapse?
                             self._dzlat[lat_node] = z[flowdirs[i]] - z[lat_node]  # -0.001
                             # after the lateral node is eroded, reset its volume eroded to
                             # zero
@@ -216,7 +216,6 @@ class ValleyWiden(Component):
         
         qs[:] = qs_in
         #All***: ^ I don't exactly remember what that is for/why.
-        vol_lat[:] += vol_lat_dt * dt
         # this loop determines if enough lateral erosion has happened to change
         # the height of the neighbor node.
 #        for i in dwnst_nodes:
