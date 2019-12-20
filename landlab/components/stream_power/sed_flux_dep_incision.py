@@ -799,7 +799,10 @@ class SedDepEroder(Component):
                 #ALL***: below, if we send sediment to vertical erosion because lateral
                 # erosion is running, do not initialize this as zeros. use the 
                 # values sent to the component instead.
-                sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
+                if "sediment__flux_from_lat" in grid.at_node:
+                    sed_into_node = self._grid.at_node["sediment__flux_from_lat"]
+                else:
+                    sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self.cell_areas
                 try:
@@ -1051,8 +1054,8 @@ class SedDepEroder(Component):
             grid.at_node["channel__depth"][:] = H
             grid.at_node["channel__discharge"][:] = node_Q
             grid.at_node["channel__bed_shear_stress"][:] = shear_stress
-        #ALL***: note that transport capacity is in m^3/year. See above for the 
-        # conversion into volume by using a SECONDS time scale.
+        #ALL***: note that transport capacity is in m^3/s. See above for the 
+        # conversion into volume by using a SECONDS to years time scale.
         grid.at_node["channel_sediment__volumetric_transport_capacity"][
             :
         ] = transport_capacities
