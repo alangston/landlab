@@ -792,7 +792,7 @@ class SedDepEroder(Component):
                 transport_capacities = np.sqrt(trp_diff * trp_diff * trp_diff)
                 shear_stress = shear_stress_prefactor_timesAparts * slopes_tothe07
                 shear_tothe_a = shear_stress ** self._a
-
+                #ALL***: note that the timestep below is in SECONDS!
                 dt_this_step = dt_secs - internal_t
                 # ^timestep adjustment is made AFTER the dz calc
                 node_vol_capacities = transport_capacities * dt_this_step
@@ -829,6 +829,13 @@ class SedDepEroder(Component):
                         node_capacity = transport_capacities[i]
                         # ^we work in volume flux, not volume per se here
                         node_vol_capacity = node_vol_capacities[i]
+                        debug=0
+                        if debug:
+                            print("node ", i)
+                            print("dt_thi_step", dt_this_step)
+                            print("sed_flux_node", sed_flux_into_this_node)
+                            print("node_capacity", node_capacity)
+                            print("node vol capacity", node_vol_capacity)
                         if flood_depth > 0.0:
                             node_vol_capacity = 0.0
                             # requires special case handling - as much sed as
@@ -869,6 +876,10 @@ class SedDepEroder(Component):
                             )
                             rel_sed_flux[i] = rel_sed_flux_here
                             vol_pass = sed_flux_out
+                            if debug:
+                                print("sed flux out", sed_flux_out)
+                                print("rel sed flux", rel_sed_flux_here)
+                                print(" ")
                         else:
                             rel_sed_flux[i] = 1.0
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
@@ -1040,7 +1051,8 @@ class SedDepEroder(Component):
             grid.at_node["channel__depth"][:] = H
             grid.at_node["channel__discharge"][:] = node_Q
             grid.at_node["channel__bed_shear_stress"][:] = shear_stress
-
+        #ALL***: note that transport capacity is in m^3/year. See above for the 
+        # conversion into volume by using a SECONDS time scale.
         grid.at_node["channel_sediment__volumetric_transport_capacity"][
             :
         ] = transport_capacities
@@ -1048,7 +1060,8 @@ class SedDepEroder(Component):
         grid.at_node["channel_sediment__relative_flux"][:] = rel_sed_flux
         # elevs set automatically to the name used in the function call.
         self.iterations_in_dt = counter
-
+#        print("self.shieldscrit", self.shields_crit)
+#        print("threshold", self.thresh)
         return grid, grid.at_node["topographic__elevation"]
 
     def run_one_step(self, dt, flooded_depths=None, **kwds):

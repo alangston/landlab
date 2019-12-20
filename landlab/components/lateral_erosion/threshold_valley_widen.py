@@ -29,11 +29,15 @@ class ValleyWiden(Component):
     def __init__(
         self,
         grid,
-        latero_mech="UC",
-        alph=0.8,
         Kl=None,
+        Dchar=None,
         solver="basic",
         flow_accumulator=None,
+        g=9.81,
+        sed_density=2700,
+        fluid_density=1000,
+        shields_thresh=0.05,
+        sec_per_year=31557600.0
     ):
         super(ValleyWiden, self).__init__(grid)
 
@@ -58,19 +62,16 @@ class ValleyWiden(Component):
                 )
             )
 
-        if latero_mech not in ("UC", "TB"):
-            raise ValueError(
-                "value for latero_mech not understood ({val} not one of {valid})".format(
-                    val=latero_mech, valid=", ".join(("UC", "TB"))
-                )
-            )
-
-
         if Kl is None:
             raise ValueError(
                 "Kl must be set as a float, node array, or field name. It was None."
             )
-
+            
+        if Dchar is None:
+            raise ValueError(
+                "Dchar (charactertistic block size) must be set as a float, node array, or field name. It was None."
+            )
+            
         if solver == "adaptive":
             if not isinstance(flow_accumulator, FlowAccumulator):
                 raise ValueError(
@@ -98,25 +99,24 @@ class ValleyWiden(Component):
         else:
             self._dzlat = grid.add_zeros("lateral_erosion__depth_increment", at="node")
 
-        # you can specify the type of lateral erosion model you want to use.
-        # But if you don't the default is the undercutting-slump model
-        if latero_mech == "TB":
-            self._TB = True
-            self._UC = False
+
+        if "block_size" in grid.at_node:
+            self._block_size = grid.at_node["block_size"]
         else:
-            self._UC = True
-            self._TB = False
+            self._block_size = grid.add_zeros("block_size", at="node")
+
         # option use adaptive time stepping. Default is fixed dt supplied by user
         if solver == "basic":
             self.run_one_step = self.run_one_step_basic
         elif solver == "adaptive":
             self.run_one_step = self.run_one_step_adaptive
         self._Kl = Kl  # can be overwritten with spatially variable
-
-        self._dzdt = grid.add_zeros(
-            "dzdt", at="node", noclobber=False
-        )  # elevation change rate (M/Y)
-
+        self.g = g
+        self.sed_density = sed_density
+        self.fluid_density = fluid_density
+        self.shields_thresh = shields_thresh
+        self.sec_per_year = sec_per_year
+        self.Dchar = Dchar
         # handling Kv for floats (inwhich case it populates an array N_nodes long) or
         # for arrays of Kv. Checks that length of Kv array is good.
         self._Kl = np.ones(self._grid.number_of_nodes, dtype=float) * Kl
@@ -132,15 +132,16 @@ class ValleyWiden(Component):
 
         """
         grid = self._grid
-        UC = self._UC
-        TB = self._TB
         Kl = self._Kl
         qs_in = self._qs_in
-        dzdt = self._dzdt
         vol_lat = self._grid.at_node["volume__lateral_erosion"]
         depth_at_node = self._grid.at_node["channel__depth"]
-#        print("depth in valleywid", depth_at_node)
 
+        channel__bed_shear_stress = self._grid.at_node["channel__bed_shear_stress"]
+        block_size = self._grid.at_node["block_size"]
+        Dchar = self.Dchar
+        rel_sed_flux = self._grid.at_node["channel_sediment__relative_flux"]
+        chan_trans_cap = self._grid.at_node["channel_sediment__volumetric_transport_capacity"]
         z = grid.at_node["topographic__elevation"]
         # clear qsin for next loop
         qs_in = grid.add_zeros("node", "sediment__flux", noclobber=False)
@@ -168,52 +169,115 @@ class ValleyWiden(Component):
             # if node i is the first cell at the top of the drainage network, don't go
             # into this loop because in this case, node i won't have a "donor" node
             if i in flowdirs:
-                # node_finder picks the lateral node to erode based on angle
-                # between segments between three nodes
                 [lat_node, inv_rad_curv] = node_finder(grid, i, flowdirs, da)
                 # node_finder returns the lateral node ID and the radius of curvature
                 lat_nodes[i] = lat_node
-                # if the lateral node is not 0 or -1 continue. lateral node may be
-                # 0 or -1 if a boundary node was chosen as a lateral node. then
-                # radius of curavature is also 0 so there is no lateral erosion
-                if lat_node > 0:
-                    # if the elevation of the lateral node is higher than primary node,
-                    # calculate a new potential lateral erosion (L/T), which is negative
-                    if z[lat_node] > z[i]:
+                if lat_node > 0 and z[lat_node] > z[i]:
+                    # ^ if the elevation of the lateral node is higher than primary node, keep going
+                    ### v ARE YOU BLOCKS OR BEDROCK?
+                    debug1=0
+                    if block_size[lat_node] > 0.0:
+                        tau_crit = block_size[lat_node]*self.g * (self.sed_density - self.fluid_density) * self.shields_thresh
+                        #calc, can blocks be transported?
+                        if channel__bed_shear_stress[i] > tau_crit:
+                            if debug:
+                                print("blocks can transport")
+#                                print("tau", channel__bed_shear_stress[i])
+#                                print("taucrit", tau_crit)
+    #                            print(frog)
+                            #if blocks transported, do it.
+                            # volume of pile of stuff
+                            pile_volume = (z[lat_node] - z[i]) * grid.dx ** 2
+                            transcap_here_yr = chan_trans_cap[i]*dt*self.sec_per_year
+                            avail_trans_cap = transcap_here_yr * (1.0-rel_sed_flux[i])
+                            if avail_trans_cap >= pile_volume:
+                                #if all sediment from lateral erosion can be transported
+                                # by teh channel, send it all down stream
+                                qs_in[flowdirs[i]] += pile_volume
+                                # then calculate how much elevation will be lost on teh lateral node
+                                # from that downstream transport
+                                self._dzlat[lat_node] = z[i] - z[lat_node]
+                                #finally, reset block size to reflect fresh bedrock
+                                block_size[lat_node] = 0.0
+                                if debug1:
+                                    print("entire pile transported")
+                            elif avail_trans_cap < pile_volume:
+                                #use all available trans capacity to move as much
+                                # pile as possible
+                                self._dzlat[lat_node] = avail_trans_cap / grid.dx **2
+                                # ^ this will give the elevation that can be removed from 
+                                # the pile of stuff that is the lateral node.
+                                qs_in[flowdirs[i]] += avail_trans_cap
+                                # ^ send the sediment downstream
+                            if debug1:
+                                print("transcap", transcap_here_yr)
+                                print("relsedflux", rel_sed_flux[i])
+                                print("avail_trans_cap", avail_trans_cap)
+                                print("pile_vol", pile_volume)
+#                                print(frog)
+
+                        #if blocks can't be transported: calc Elat, track undercutting
+                        else:    # below is for blocks that can't be transported
+                            petlat = -Kl[i] * da[i] * max_slopes[i] * inv_rad_curv
+                            vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
+                            vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
+                            # vol_diff is the volume that must be eroded from lat_node so that its
+                            # elevation is the same as node downstream of primary node
+    #                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
+                            voldiff = depth_at_node[i] * grid.dx ** 2
+                            # below, send sediment downstream
+                            qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i])
+                            debug = 1
+                            if debug:
+                                print("blocks can't transport")
+#                                print("voldiff", voldiff)
+#                                print("vol_lat[latnode]", vol_lat[lat_node])
+                            #*******WILL VALLEY WALL COLLAPSE again?
+                            if vol_lat[lat_node] >= voldiff:
+                                self._dzlat[lat_node] = depth_at_node[i] * -1.0
+                                # ^ Change elevation of lateral node by the length undercut
+                                vol_lat[lat_node] = 0.0
+                                # ^after the lateral node is eroded, reset its volume eroded to
+                                # zero
+                                ####HAVE ALL BLOCKS BEEN ERODED? compare lat and primary node within 5mm
+                                if np.isclose(z[lat_node], z[i], atol=0.005):
+                                    block_size[lat_node] = 0.0
+
+                    else:    # below is for fresh bedrock valley walls
                         petlat = -Kl[i] * da[i] * max_slopes[i] * inv_rad_curv
-                        # the calculated potential lateral erosion is mutiplied by the length of the node
-                        # and the bank height, then added to an array, vol_lat_dt, for volume eroded
-                        # laterally  *per timestep* at each node. This vol_lat_dt is reset to zero for
-                        # each timestep loop. vol_lat_dt is added to itself in case more than one primary
-                        # nodes are laterally eroding this lat_node
-                        # volume of lateral erosion per timestep
                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
                         vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
                         # vol_diff is the volume that must be eroded from lat_node so that its
-                        # elevation is the same as node downstream of primary node
-                        # UC model: this would represent undercutting (the water height at
-                        # node i), slumping, and instant removal.
-                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
+                        # elevation is the same as primary node
+                        voldiff = (depth_at_node[i]) * grid.dx ** 2
                         debug = 1
                         if debug:
-                            print("latnode", lat_node)
-                            print("voldiff", voldiff)
-                            print("vol_lat[latnode]", vol_lat[lat_node])
-                        #*******will valley wall collapse?
+                            print("fresh bedrock")
+#                            print("voldiff", voldiff)
+#                            print("vol_lat[latnode]", vol_lat[lat_node])
+                        #*******WILL VALLEY WALL COLLAPSE for the first time?
                         if vol_lat[lat_node] >= voldiff:
                             #ALL***: ^now this line is just telling me: will this
                             # valley wall collapse?
-                            self._dzlat[lat_node] = z[flowdirs[i]] - z[lat_node]  # -0.001
-                            # after the lateral node is eroded, reset its volume eroded to
-                            # zero
+                            self._dzlat[lat_node] = depth_at_node[i] * -1.0
+                            # ^ Change elevation of lateral node by the length undercut
                             vol_lat[lat_node] = 0.0
-            # send sediment downstream. sediment eroded from 
-            # and lateral erosion is sent downstream
-            #            print("debug before 406")
-            qs_in[flowdirs[i]] += (
-                qs_in[i] - (petlat * grid.dx * depth_at_node[i])
-            )  # qsin to next node
-        
+                            # ^after the lateral node is eroded, reset its volume eroded to
+                            # zero
+                            ####change block size status from bedrock to blocks
+                            block_size[lat_node] = Dchar
+                            if debug1:
+                                print("lat ero occurred")
+                                print("lat node", lat_node)
+                                print("dzlat[latnode]", self._dzlat[lat_node])
+                                print("z[flowdirs[i]]",z[flowdirs[i]])
+                                print("z[i]",z[i])
+                                print("depthatnode[i]",depth_at_node[i])
+                                print("block_size", block_size[lat_node])
+                                print("petlat", petlat)
+#                                print(frog)
+                        # send sediment downstream. for bedrock erosion only
+                        qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i])
         qs[:] = qs_in
         #All***: ^ I don't exactly remember what that is for/why.
         # this loop determines if enough lateral erosion has happened to change
