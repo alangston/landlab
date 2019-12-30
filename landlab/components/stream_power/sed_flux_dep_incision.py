@@ -801,6 +801,7 @@ class SedDepEroder(Component):
                 # values sent to the component instead.
                 if "sediment__flux_from_lat" in grid.at_node:
                     sed_into_node = self._grid.at_node["sediment__flux_from_lat"]
+#                    print("sed_into_node, vertical", sed_into_node)
                 else:
                     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
@@ -887,6 +888,7 @@ class SedDepEroder(Component):
                             rel_sed_flux[i] = 1.0
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
                             dz_here = -vol_dropped / cell_area
+#                            print("vol_dropped", vol_dropped)
                             # with the pits, we aim to inhibit incision, but
                             # depo is OK. We have already zero'd any adverse
                             # grads, so sed can make it to the bottom of the
