@@ -858,6 +858,15 @@ class SedDepEroder(Component):
                                 * dt_this_step
                                 * (shear_tothe_a[i] - thresh).clip(0.0)
                             )
+                            #^ AL Dec31: Note that dz_prefactor is the max erosion in teh timestep
+                            debug2=0
+                            if debug2:
+                                print("dz_prefactor", dz_prefactor)
+#                                print("self._K_unit_time", self._K_unit_time)
+#                                print("dt_this_step", dt_this_step)
+#                                print("shear_tothe_a", shear_tothe_a[i])
+#                                print("thresh", thresh)
+#                                print(frog)
                             vol_prefactor = dz_prefactor * cell_area
                             (
                                 dz_here,
@@ -981,6 +990,16 @@ class SedDepEroder(Component):
                     if sed_flux_into_this_node < node_vol_capacity:
                         # ^note incision is forbidden at capacity
                         dz_prefactor = dt_this_step * erosion_prefactor_withS[i]
+                        debug=0
+                        #AL 12/31/2019: I was looking here to see if I could adapt my lateral erosino model
+                        # a stream power model to accept changes in runoff. 
+                        if debug:
+                            print("")
+                            print("erosion_prefactor_withA[i]", erosion_prefactor_withA[i])
+                            print("erosion_prefactor_withS[i]", erosion_prefactor_withS[i])
+                            print("dz_prefactor", dz_prefactor)
+                            print(frog)
+                            
                         vol_prefactor = dz_prefactor * cell_area
                         (
                             dz_here,
