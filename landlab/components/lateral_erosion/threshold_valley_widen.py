@@ -215,7 +215,7 @@ class ValleyWiden(Component):
                                 dzlat_ts[lat_node] = z[i] - z[lat_node]
                                 #finally, reset block size to reflect fresh bedrock
                                 block_size[lat_node] = 0.0
-                                status_lat_nodes[lat_node] = 4
+                                status_lat_nodes[lat_node] = 5
                                 if debug3:
                                     print("entire pile transported")
                             elif avail_trans_cap < pile_volume and rel_sed_flux[i] < 1:
@@ -231,7 +231,7 @@ class ValleyWiden(Component):
                                 # the pile of stuff that is the lateral node.
                                 qs_in[flowdirs[i]] += avail_trans_cap
                                 # ^ send the sediment downstream
-                                status_lat_nodes[lat_node] = 3
+                                status_lat_nodes[lat_node] = 4
                                 if debug3:
                                     print("entire pile NOT transported")
                             if debug3:
@@ -255,7 +255,7 @@ class ValleyWiden(Component):
                             voldiff = depth_at_node[i] * grid.dx ** 2
                             # below, send sediment downstream
                             qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
-                            status_lat_nodes[lat_node] = 2
+                            status_lat_nodes[lat_node] = 3
                             if debug3:
                                 print("blocks can't transport")
                             #*******WILL VALLEY WALL COLLAPSE again?
@@ -292,10 +292,7 @@ class ValleyWiden(Component):
                             # zero
                             ####change block size status from bedrock to blocks
                             block_size[lat_node] = Dchar
-                            debug1=0
-                            if debug1:
-                                print("lat ero occurred BR")
-
+                            status_lat_nodes[lat_node] = 2
                         # send sediment downstream. for bedrock erosion only
                         qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
 #                        print("qs_in[flowdirs[i]] AFTER", qs_in[flowdirs[i]])
