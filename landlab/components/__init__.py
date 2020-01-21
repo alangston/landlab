@@ -111,6 +111,7 @@ COMPONENTS = [
     StreamPowerSmoothThresholdEroder,
     TaylorNonLinearDiffuser,
     TransportLengthHillslopeDiffuser,
+    ValleyWiden,
     VegCA,
     Vegetation,
 ]
