@@ -115,9 +115,22 @@ class Profiler(_BaseProfiler):
     Endpoints can also be set with a combination of coordinates and nodes.
 
     >>> profiler = Profiler(mg, [(10, 10), 16, (10, 70)])
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    None Listed
+
     """
 
     _name = "Profiler"
+
+    _unit_agnostic = True
 
     def __init__(self, grid, endpoints, cmap="viridis"):
         """Instantiate Profiler.
@@ -136,7 +149,7 @@ class Profiler(_BaseProfiler):
         cmap : str
             A valid matplotlib cmap string. Default is "viridis".
         """
-        super(_BaseProfiler, self).__init__(grid)
+        super().__init__(grid)
 
         self._cmap = plt.get_cmap(cmap)
 

@@ -92,9 +92,24 @@ class ChiFinder(Component):
            [ True,  True, False,  True,  True],
            [False, False, False,  True,  True],
            [ True,  True,  True,  True,  True]], dtype=bool)
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    Perron, J., Royden, L. (2012). An integral approach to bedrock river
+    profile analysis Earth Surface Processes and Landforms  38(6), 570-576.
+    https://dx.doi.org/10.1002/esp.3302
+
     """
 
     _name = "ChiFinder"
+
+    _unit_agnostic = True
 
     _info = {
         "channel__chi_index": {
@@ -186,7 +201,7 @@ class ChiFinder(Component):
             Raise an exception if adding an already existing field.
 
         """
-        super(ChiFinder, self).__init__(grid)
+        super().__init__(grid)
 
         if grid.at_node["flow__receiver_node"].size != grid.size("node"):
             msg = (

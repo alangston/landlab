@@ -200,6 +200,19 @@ class FlowDirectorDINF(_FlowDirectorToMany):
     >>> proportions.sum(axis=1)
     array([ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,
             1.,  1.,  1.])
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    Tarboton, D. (1997). A new method for the determination of flow directions
+    and upslope areas in grid digital elevation models. Water Resources
+    Research  33(2), 309-319. https://dx.doi.org/10.1029/96wr03137
+
     """
 
     _name = "FlowDirectorDINF"
@@ -271,7 +284,7 @@ class FlowDirectorDINF(_FlowDirectorToMany):
 
         self._method = "DINF"
         self._max_receivers = 2
-        super(FlowDirectorDINF, self).__init__(grid, surface)
+        super().__init__(grid, surface)
         try:
             self._grid.nodes_at_d8
         except AttributeError:

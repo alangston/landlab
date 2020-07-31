@@ -50,9 +50,24 @@ class PerronNLDiffuse(Component):
     ...       0.        ,  0.        ,  0.        ,  0.        ,  0.        ])
     >>> np.allclose(z, z_target)
     True
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    Perron, J. (2011). Numerical methods for nonlinear hillslope transport laws.
+    Journal of Geophysical Research  116(F2), 23 - 13.
+    https://dx.doi.org/10.1029/2010jf001801
+
     """
 
     _name = "PerronNLDiffuse"
+
+    _unit_agnostic = True
 
     _info = {
         "topographic__elevation": {
@@ -87,7 +102,7 @@ class PerronNLDiffuse(Component):
         sed_density : float (kg*m**-3)
             The density of the mobile (sediment) layer
         """
-        super(PerronNLDiffuse, self).__init__(grid)
+        super().__init__(grid)
 
         self._bc_set_code = self._grid.bc_set_code
         self._values_to_diffuse = "topographic__elevation"

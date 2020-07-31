@@ -63,7 +63,7 @@ def _estimate_hack_coeff(A, L):
     return popt
 
 
-def _flatten(l):
+def _flatten(list_):
     """
     Examples
     --------
@@ -78,12 +78,12 @@ def _flatten(l):
     ...     np.array([1, 2, 3, 4, 5, 6, 7, 9, 9, 10, 11, 12, 13, 14, 15, 16]))
     >>> assert _flatten(None) is None
     """
-    if l is None:
+    if list_ is None:
         return None
-    if not hasattr(l, "__iter__"):
-        return [l]
+    if not hasattr(list_, "__iter__"):
+        return [list_]
     else:
-        return list(chain(*map(_flatten, l)))
+        return list(chain(*map(_flatten, list_)))
 
 
 class HackCalculator(Component):
@@ -154,9 +154,24 @@ class HackCalculator(Component):
     238                39.0    10000.0     0.0    71.61
     239                39.0  2160000.0  3000.0  2894.22
     240                39.0    10000.0     0.0    71.61
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    Hack, J. T. Studies of longitudinal stream profiles in Virginia and
+    Maryland (Vol. 294). U.S. Geological Survey Professional Paper 294-B (1957).
+    https://doi.org/10.3133/pp294B
+
     """
 
     _name = "HackCalculator"
+
+    _unit_agnostic = True
 
     _info = {
         "distance_to_divide": {
@@ -219,7 +234,7 @@ class HackCalculator(Component):
         **kwds :
             Values to pass to the ChannelProfiler.
         """
-        super(HackCalculator, self).__init__(grid)
+        super().__init__(grid)
 
         self._profiler = ChannelProfiler(grid, **kwds)
         self._save_full_df = save_full_df

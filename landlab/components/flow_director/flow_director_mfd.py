@@ -318,9 +318,29 @@ class FlowDirectorMFD(_FlowDirectorToMany):
            1, 0, 0, 0, 1,
            1, 0, 0, 1,
            1, 1, 1])
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    Freeman, T. (1991). Calculating catchment area with divergent flow based on
+    a regular grid. Computers and Geosciences  17(3), 413 - 422.
+    https://dx.doi.org/10.1016/0098-3004(91)90048-i
+
+    Quinn, P., Beven, K., Chevallier, P., Planchon, O. (1991). The prediction
+    of hillslope flow paths for distributed hydrological modelling using
+    digital terrain models Hydrological Processes  5(1), 59-79.
+    https://dx.doi.org/10.1002/hyp.3360050106
+
     """
 
     _name = "FlowDirectorMFD"
+
+    _unit_agnostic = True
 
     _info = {
         "flow__link_to_receiver_node": {
@@ -405,7 +425,7 @@ class FlowDirectorMFD(_FlowDirectorToMany):
         else:
             self._max_receivers = grid.adjacent_nodes_at_node.shape[1]
 
-        super(FlowDirectorMFD, self).__init__(grid, surface)
+        super().__init__(grid, surface)
         self.updated_boundary_conditions()
 
     def updated_boundary_conditions(self):
