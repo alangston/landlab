@@ -209,6 +209,8 @@ class _BaseProfiler(Component, ABC):
         segments = []
         qmin = []
         qmax = []
+        #ALL added below, 7/28/2020
+        print("distancealongprofile", self._distance_along_profile)
         for idx, nodes in enumerate(self._nodes):
             segments.append(
                 list(zip(self._distance_along_profile[idx], quantity[nodes]))
