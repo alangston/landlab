@@ -71,9 +71,22 @@ class PotentialityFlowRouter(Component):
     >>> mg.at_node['surface_water__discharge'][mg.core_nodes]
     array([ 11.70706863,  11.5709712 ,  10.41329927,   9.24959728,
              6.65448576,   6.39262702,   5.71410162,   5.04743495])
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    None Listed
+
     """
 
     _name = "PotentialityFlowRouter"
+
+    _unit_agnostic = False
 
     _info = {
         "flow__potential": {
@@ -143,7 +156,7 @@ class PotentialityFlowRouter(Component):
         Mannings_n : float (optional)
             Required if flow_equation == 'Manning'.
         """
-        super(PotentialityFlowRouter, self).__init__(grid)
+        super().__init__(grid)
 
         if isinstance(grid, RasterModelGrid):
             assert grid.number_of_node_rows >= 3

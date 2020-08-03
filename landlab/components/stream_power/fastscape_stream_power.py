@@ -124,9 +124,25 @@ class FastscapeEroder(Component):
     >>> z.reshape(grid.shape)[1, :]  # doctest: +NORMALIZE_WHITESPACE
     array([  0.        ,   0.0647484 ,   0.58634455,   2.67253503,
              8.49212152,  20.92606987,  36.        ])
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    Braun, J., Willett, S. (2013). A very efficient O(n), implicit and parallel
+    method to solve the stream power equation governing fluvial incision and
+    landscape evolution. Geomorphology  180-181(C), 170-179.
+    https://dx.doi.org/10.1016/j.geomorph.2012.10.008
+
     """
 
     _name = "FastscapeEroder"
+
+    _unit_agnostic = True
 
     _info = {
         "drainage_area": {
@@ -209,7 +225,7 @@ class FastscapeEroder(Component):
             to false, the field *flood_status_code* must be present on the grid
             (this is created by the DepressionFinderAndRouter). Default True.
         """
-        super(FastscapeEroder, self).__init__(grid)
+        super().__init__(grid)
 
         if "flow__receiver_node" in grid.at_node:
             if grid.at_node["flow__receiver_node"].size != grid.size("node"):
@@ -233,7 +249,9 @@ class FastscapeEroder(Component):
 
         self._erode_flooded_nodes = erode_flooded_nodes
 
-        self._K = return_array_at_node(grid, K_sp)
+        # use setter for K defined below
+        self.K = K_sp
+
         self._m = float(m_sp)
         self._n = float(n_sp)
 
@@ -247,6 +265,15 @@ class FastscapeEroder(Component):
         # make storage variables
         self._A_to_the_m = grid.zeros(at="node")
         self._alpha = grid.empty(at="node")
+
+    @property
+    def K(self):
+        """Erodibility (units depend on m_sp)."""
+        return self._K
+
+    @K.setter
+    def K(self, new_val):
+        self._K = return_array_at_node(self._grid, new_val)
 
     def run_one_step(self, dt):
         """Erode for a single time step.

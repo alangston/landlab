@@ -20,10 +20,12 @@ from .fracture_grid import FractureGridGenerator
 from .gflex import gFlex
 from .groundwater import GroundwaterDupuitPercolator
 from .hack_calculator import HackCalculator
+from .hand_calculator import HeightAboveDrainageCalculator
 from .lake_fill import LakeMapperBarnes
 from .landslides import LandslideProbability
 from .lateral_erosion import (LateralEroder, ValleyWiden)
 from .lithology import LithoLayers, Lithology
+from .network_sediment_transporter import NetworkSedimentTransporter
 from .nonlinear_diffusion import PerronNLDiffuse
 from .normal_fault import NormalFault
 from .overland_flow import (
@@ -35,7 +37,7 @@ from .overland_flow import (
 from .pet import PotentialEvapotranspiration
 from .plant_competition_ca import VegCA
 from .potentiality_flowrouting import PotentialityFlowRouter
-from .profiler import ChannelProfiler, Profiler
+from .profiler import ChannelProfiler, Profiler, TrickleDownProfiler
 from .radiation import Radiation
 from .sink_fill import SinkFiller, SinkFillerBarnes
 from .soil_moisture import SoilInfiltrationGreenAmpt, SoilMoisture
@@ -80,6 +82,7 @@ COMPONENTS = [
     gFlex,
     GroundwaterDupuitPercolator,
     HackCalculator,
+    HeightAboveDrainageCalculator,
     KinwaveImplicitOverlandFlow,
     KinwaveOverlandFlowModel,
     LakeMapperBarnes,
@@ -89,6 +92,7 @@ COMPONENTS = [
     LithoLayers,
     Lithology,
     LossyFlowAccumulator,
+    NetworkSedimentTransporter,
     NormalFault,
     OverlandFlow,
     OverlandFlowBates,
@@ -111,7 +115,9 @@ COMPONENTS = [
     StreamPowerSmoothThresholdEroder,
     TaylorNonLinearDiffuser,
     TransportLengthHillslopeDiffuser,
+    TrickleDownProfiler,
     ValleyWiden,
+    TrickleDownProfiler,
     VegCA,
     Vegetation,
 ]

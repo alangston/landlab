@@ -43,9 +43,21 @@ class NormalFault(Component):
     the **run_one_step** and **run_one_earthquake** methods. It is encumbent
     upon the user, however, to ensure that these two methods are used in
     combination correctly for their specific use case.
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    None Listed
     """
 
     _name = "NormalFault"
+
+    _unit_agnostic = True
 
     _info = {
         "topographic__elevation": {
@@ -241,7 +253,7 @@ class NormalFault(Component):
         >>> nf.current_time
         30000.0
         """
-        super(NormalFault, self).__init__(grid)
+        super().__init__(grid)
 
         # save a reference to the grid
 

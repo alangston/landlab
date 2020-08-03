@@ -41,9 +41,22 @@ class DischargeDiffuser(Component):
     This is a "research grade" component, and is subject to dramatic change
     with little warning. No guarantees are made regarding its accuracy or
     utility. It is not recommended for user use yet!
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    None Listed
+
     """
 
     _name = "DischargeDiffuser"
+
+    _unit_agnostic = True
 
     _info = {
         "flow__potential": {
@@ -98,7 +111,7 @@ class DischargeDiffuser(Component):
         grid : ModelGrid
             A grid.
         """
-        super(DischargeDiffuser, self).__init__(grid)
+        super().__init__(grid)
 
         if isinstance(grid, RasterModelGrid):
             assert grid.number_of_node_rows >= 3

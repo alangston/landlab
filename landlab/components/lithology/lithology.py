@@ -15,25 +15,6 @@ class Lithology(Component):
 
     """Create a Lithology object.
 
-    If you use the Lithology component, cite the
-    `JOSS paper that describes it
-    <https://joss.theoj.org/papers/10.21105/joss.00979>`.
-
-    ::
-
-        @article{barnhart2018lithology,
-          title={Lithology: A Landlab submodule for spatially variable
-                 rock properties.},
-          author={Barnhart, Katherine R and Hutton, Eric WH and Gasparini,
-                  Nicole M and Tucker, Gregory E},
-          journal={J. Open Source Software},
-          volume={3},
-          number={30},
-          pages={979},
-          year={2018},
-          doi={10.21105/joss.00979}
-        }
-
     A Lithology is a three dimentional representation of material operated on
     by landlab components. Material can be removed through erosion or added to
     through deposition. Rock types can have multiple attributes (e.g. age,
@@ -69,9 +50,24 @@ class Lithology(Component):
     Where ``'K_sp'`` and ``'D'`` are properties to track, and ``1`` and ``2``
     are rock type IDs. The rock type IDs can be any type that is valid as a
     python dictionary key.
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    Barnhart, K., Hutton, E., Gasparini, N., Tucker, G. (2018). Lithology: A
+    Landlab submodule for spatially variable rock properties. Journal of Open
+    Source Software  3(30), 979 - 2. https://dx.doi.org/10.21105/joss.00979
+
+    **Additional References**
+
+    None Listed
+
     """
 
     _name = "Lithology"
+
+    _unit_agnostic = True
 
     _cite_as = """@article{barnhart2018lithology,
                     title = "Lithology: A Landlab submodule for spatially variable rock properties",
@@ -190,7 +186,7 @@ class Lithology(Component):
                [ 2. ,  3. ,  4. ,  2. ,  3. ,  4. ,  2. ,  3. ,  4. ],
                [ 1. ,  1.5,  2. ,  1. ,  1.5,  2. ,  1. ,  1.5,  2. ]])
         """
-        super(Lithology, self).__init__(grid)
+        super().__init__(grid)
 
         try:
             self._last_elevation = self._grid["node"]["topographic__elevation"][

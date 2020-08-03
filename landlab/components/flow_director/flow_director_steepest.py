@@ -244,9 +244,22 @@ class FlowDirectorSteepest(_FlowDirectorToOne):
         7,  3,  4,  5, 11,
          12,  8,  9, 15,
           16, 17, 18])
+
+    References
+    ----------
+    **Required Software Citation(s) Specific to this Component**
+
+    None Listed
+
+    **Additional References**
+
+    None Listed
+
     """
 
     _name = "FlowDirectorSteepest"
+
+    _unit_agnostic = True
 
     _info = {
         "flow__link_direction": {
@@ -310,7 +323,7 @@ class FlowDirectorSteepest(_FlowDirectorToOne):
             topographic__elevation,.
         """
         self._method = "D4"
-        super(FlowDirectorSteepest, self).__init__(grid, surface)
+        super().__init__(grid, surface)
         self._is_Voroni = isinstance(self._grid, VoronoiDelaunayGrid)
 
         # get 'flow__link_direction' field
