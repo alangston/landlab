@@ -155,8 +155,8 @@ class ValleyWiden(Component):
         dt : float
             Model timestep [T]
         qs_in/grid.at_node["sediment__flux_from_lat"] : array
-            qs_in will be in UNITS of m**3/time step. THis must be
-            converted to m**3/s for vertical incision. (pretty sure)
+            qs_in will be in UNITS of m**3/time step. THis is the same
+            units as needed for vertical incsion
 
         """
         grid = self._grid
