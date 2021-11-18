@@ -120,7 +120,8 @@ class ValleyWiden(Component):
             self._dzlat = grid.at_node["lateral_erosion__depth_cum"]
         else:
             self._dzlat = grid.add_zeros("lateral_erosion__depth_cum", at="node")
-
+#******************AL:, AL, you need to look at the above^ and see if its correct
+#                   see also fixes in lateral erosion in teh matster landlab version
         if "status_lat_nodes" in grid.at_node:
             self._status_lat_nodes = grid.at_node["status_lat_nodes"]
         else:
@@ -129,7 +130,12 @@ class ValleyWiden(Component):
             self._block_size = grid.at_node["block_size"]
         else:
             self._block_size = grid.add_zeros("block_size", at="node")
-
+        save_dzlat_ts = 1
+        if save_dzlat_ts:
+            if "dzlat_ts" in grid.at_node:
+                self._dzlat_ts = grid.at_node["dzlat_ts"]
+            else:
+                self._dzlat_ts = grid.add_zeros("dzlat_ts", at="node")
         # option use adaptive time stepping. Default is fixed dt supplied by user
         if solver == "basic":
             self.run_one_step = self.run_one_step_basic
@@ -380,6 +386,11 @@ class ValleyWiden(Component):
 #                        # zero
 #                        vol_lat[lat_node] = 0.0
         grid.at_node["lateral_erosion__depth_cum"][:] += dzlat_ts
+        #^ AL: this only keeps track of cumulative lateral erosion at each cell.
+
+        if "dzlat_ts" in grid.at_node:
+            grid.at_node["dzlat_ts"][:] = dzlat_ts
+        #**AL: 11/18/21: added the above few lines to save lateral erosion per timestep
         # change height of landscape by just removing laterally eroded stuff.
         z[:] += dzlat_ts
 #        print("z in lat", z)
