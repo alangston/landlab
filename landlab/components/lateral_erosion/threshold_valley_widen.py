@@ -241,8 +241,9 @@ class ValleyWiden(Component):
                         tau_crit = block_size[lat_node]*self.g * (self.sed_density - self.fluid_density) * self.shields_thresh
                         #calc, can blocks be transported?
                         if channel__bed_shear_stress[i] > tau_crit:
-                            if debug3:
+                            if debug3 and lat_node == 438:
                                 print(" ")
+                                print("depth_at_node", depth_at_node)
                                 print("lat_node", lat_node)
                                 print("blocks can transport")
                                 print("tau", channel__bed_shear_stress[i])
@@ -264,7 +265,7 @@ class ValleyWiden(Component):
                                 #finally, reset block size to reflect fresh bedrock
                                 block_size[lat_node] = 0.0
                                 status_lat_nodes[lat_node] = 5
-                                if debug3:
+                                if debug3 and lat_node == 438:
                                     print("entire pile transported")
                             elif avail_trans_cap < pile_volume and rel_sed_flux[i] < 1:
                                 #**Note here I found that if avail trans capacity is 0,
@@ -282,9 +283,9 @@ class ValleyWiden(Component):
                                 # sediment  in m**3(no time scale in here, but this
                                 # is volume downstream over this timestep, dt)
                                 status_lat_nodes[lat_node] = 4
-                                if debug3:
+                                if debug3 and lat_node == 438:
                                     print("entire pile NOT transported")
-                            if debug3:
+                            if debug3 and lat_node == 438:
                                 print(" ")
                                 print("downstream node", flowdirs[i])
                                 print("qs_in[flowdirs[i]]", qs_in[flowdirs[i]])
@@ -308,7 +309,7 @@ class ValleyWiden(Component):
                             # below, send sediment downstream, units of volume
                             qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
                             status_lat_nodes[lat_node] = 3
-                            if debug3:
+                            if debug3 and lat_node == 438:
                                 print("blocks can't transport")
                             #*******WILL VALLEY WALL COLLAPSE again?
                             if vol_lat[lat_node] >= voldiff:
