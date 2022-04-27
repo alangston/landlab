@@ -5,6 +5,8 @@ import scipy.constants
 
 from landlab import Component, MissingKeyError
 from landlab.utils.decorators import make_return_array_immutable
+from landlab.utils.return_array import return_array_at_node
+
 
 
 class SedDepEroder(Component):
@@ -68,6 +70,17 @@ class SedDepEroder(Component):
     *flooded_depths* be passed to the run method. A flooded depression
     acts as a perfect sediment trap, and will be filled sequentially
     from the inflow points towards the outflow points.
+    """
+    """
+    NOTES from Abby, AL:
+        April 25, 2022. I added an option to pass "surface_water__discharge" to this
+        component to use that instead of drainage area. This modification is on line 358 
+        and implemented on line 690. 
+        You cannot have runoff changing dynamically here. You just pass the component
+        runoff as usual (runoff_rate = 10.0 or whatever). 
+        BUT!!!! it's really important to remember to set the water_unit_flux_in'
+        field to all ones and then one node as the inlet. This field in this case
+        is really ONLY for adding that inlet. 
     """
 
     _name = "SedDepEroder"
@@ -188,6 +201,7 @@ class SedDepEroder(Component):
         sediment_density=2700,
         fluid_density=1000,
         runoff_rate=1.0,
+        discharge_field="drainage_area",
         sed_dependency_type="generalized_humped",
         kappa_hump=13.683,
         nu_hump=1.13,
@@ -352,6 +366,8 @@ class SedDepEroder(Component):
         self._flooded_depths = flooded_depths
         self._pseudoimplicit_repeats = pseudoimplicit_repeats
 
+        self._A = return_array_at_node(grid, discharge_field)
+        ###^^^***** april 25, above from stream_power
         self._link_S_with_trailing_blank = np.zeros(grid.number_of_links + 1)
         # ^needs to be filled with values in execution
         self._countactive_links = np.zeros_like(
@@ -371,6 +387,13 @@ class SedDepEroder(Component):
         )
         # ^to accelerate MPM calcs
         self._rho_g = self._fluid_density * self._g
+        
+        
+        if "external_sediment__flux" in grid.at_node:
+            self._sed_into_node = self._grid.at_node["external_sediment__flux"]
+        #     #ALL: adding April 25, 2022
+        else:
+            self._sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
         self._type = sed_dependency_type
         assert self._type in (
             "generalized_humped",
@@ -681,7 +704,12 @@ class SedDepEroder(Component):
 
         grid = self._grid
         node_z = grid.at_node["topographic__elevation"]
-        node_A = grid.at_node["drainage_area"]
+        # node_A = grid.at_node["drainage_area"]
+        node_A = self._A
+        #4/25/2022 AL added thsi above. 
+        # I believe this works now along with added stuff on line 358
+        # print("inside component")
+        # print("node_A", node_A[578])
         flow_receiver = grid.at_node["flow__receiver_node"]
         s_in = grid.at_node["flow__upstream_node_order"]
         node_S = grid.at_node["topographic__steepest_slope"]
@@ -793,6 +821,10 @@ class SedDepEroder(Component):
                 trp_diff = (transport_capacities_S - transport_capacities_thresh).clip(
                     0.0
                 )
+                # print("transcap prefactor with A", transport_capacity_prefactor_withA)
+                # print("transport_capacities_thresh", transport_capacities_thresh)
+                # print("trpdiff", trp_diff)
+                # print(frog)
                 transport_capacities = np.sqrt(trp_diff * trp_diff * trp_diff)
                 shear_stress = shear_stress_prefactor_timesAparts * slopes_tothe07
                 shear_tothe_a = shear_stress ** self._a
@@ -808,8 +840,21 @@ class SedDepEroder(Component):
                     #ALL:I was right that sed into node has to be in volume per dt,
                     # where dt = 100 years or so, or 3.15e10 seconds
                     # print("sed_into_node, vertical", sed_into_node)
+######COME BACK HERE. INLET WON'T WORK WITH LATERAL EROSION RIGHT NOW
+                elif self._sed_into_node is not None:
+                    sed_into_node = np.copy(self._sed_into_node)
+                    #April 25, 2022: horrible coding above, but it works for now. 
                 else:
                     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
+                    # sed_into_node[578] =2.5e5
+
+                #below april 25, debug
+                debug25 = 0
+                if debug25:
+                    print("")
+                    print("in component")
+                    print("sed into node", sed_into_node [578])
+                    print("")
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self._cell_areas
                 try:
@@ -840,12 +885,13 @@ class SedDepEroder(Component):
                         # ^we work in volume flux, not volume per se here
                         node_vol_capacity = node_vol_capacities[i]
                         debug=0
-                        if debug:
+                        if debug and i == 24:
                             print("node ", i)
                             print("dt_thi_step", dt_this_step)
                             print("sed_flux_node", sed_flux_into_this_node)
                             print("node_capacity", node_capacity)
                             print("node vol capacity", node_vol_capacity)
+                            print(frog)
                         if flood_depth > 0.0:
                             node_vol_capacity = 0.0
                             # requires special case handling - as much sed as
@@ -873,7 +919,7 @@ class SedDepEroder(Component):
                                 print("dt_this_step", dt_this_step)
 #                                print("shear_tothe_a", shear_tothe_a[i])
 #                                print("thresh", thresh)
-                                print(frog)
+                                # print(frog)
                             vol_prefactor = dz_prefactor * cell_area
                             (
                                 dz_here,
@@ -951,6 +997,8 @@ class SedDepEroder(Component):
                     core_draining_nodes
                 ] / link_length[core_draining_nodes]
                 internal_t += dt_this_step  # still in seconds, remember
+                print("in component")
+                print("counter = ", counter)
 
         elif self._Qc == "power_law":
             transport_capacity_prefactor_withA = self._Kt * node_A**self._mt

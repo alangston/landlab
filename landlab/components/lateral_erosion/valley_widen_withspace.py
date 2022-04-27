@@ -12,8 +12,6 @@ from landlab import Component, RasterModelGrid
 from landlab.components.flow_accum import FlowAccumulator
 
 from landlab.components.lateral_erosion.node_finder import node_finder
-from landlab.utils.return_array import return_array_at_node
-
 
 # Hard coded constants
 cfl_cond = 0.3  # CFL timestep condition
@@ -23,8 +21,17 @@ wid_exp = 0.35  # exponent for calculating channel width
 
 class ValleyWiden(Component):
     """
-    Laterally erode neighbor node through fluvial erosion AND add volume of
-    collapsed bedrock to channel as sediment of a specified size (Dchar).
+April 22, 2022: modifying Threshold Valley widen attempt to work with SPACE
+model instead. 
+Steps for this component:
+    Can the water transport more sediment at this cell?
+    {Find how much more sed the water can transport, do Ds/(es+er). This will give
+     a ratio going from 0 to 1. If 1, no more sed. }
+        If no, no lateral erosion of talus blocks
+        If yes, how much more sed? {<-- Do this part by calculating dHdt. See
+            equation 13 in Shobe. }
+        
+        Details on this: what about grain size. this si important to me. 
 
 
     Parameters
@@ -35,13 +42,7 @@ class ValleyWiden(Component):
         Lateral bedrock erodibility, units  1/years
     Dchar : float
         Characteristic sediment grain size bedrock breaks up into, units m
-    solver : string
-        Solver options:
-            (1) 'basic' (default): explicit forward-time extrapolation.
-                Simple but will become unstable if time step is too large or
-                if bedrock erodibility is vry high.
-            (2) 'adaptive': subdivides global time step as needed to
-                prevent slopes from reversing.
+
     flow_accumulator : Instantiated Landlab FlowAccumulator, optional
         When solver is set to "adaptive", then a valid Landlab FlowAccumulator
         must be passed. It will be run within sub-timesteps in order to update
@@ -55,7 +56,6 @@ class ValleyWiden(Component):
         grid,
         Kl=None,
         Dchar=None,
-        discharge_field="drainage_area",
         solver="basic",
         flow_accumulator=None,
         g=9.81,
@@ -114,10 +114,10 @@ class ValleyWiden(Component):
         else:
             self._vol_lat = grid.add_zeros("volume__lateral_erosion", at="node")
 
-        if "external_sediment__flux" in grid.at_node:
-            self._qs_in = grid.at_node["external_sediment__flux"]
+        if "sediment__flux_from_lat" in grid.at_node:
+            self._qs_in = grid.at_node["sediment__flux_from_lat"]
         else:
-            self._qs_in = grid.add_zeros("external_sediment__flux", at="node")
+            self._qs_in = grid.add_zeros("sediment__flux_from_lat", at="node")
 
         if "lateral_erosion__depth_increment" in grid.at_node:
             self._dzlat = grid.at_node["lateral_erosion__depth_cum"]
@@ -154,9 +154,6 @@ class ValleyWiden(Component):
         # handling Kv for floats (inwhich case it populates an array N_nodes long) or
         # for arrays of Kv. Checks that length of Kv array is good.
         self._Kl = np.ones(self._grid.number_of_nodes, dtype=float) * Kl
-        self._A = return_array_at_node(grid, discharge_field)
-        ###^^^***** april 25, 2022 above from stream_power AND my new additions
-        # to sed_flux_dependent_incision
 
     def run_one_step_basic(self, dt=1.0):
         """Calculate lateral erosion for
@@ -166,7 +163,7 @@ class ValleyWiden(Component):
         ----------
         dt : float
             Model timestep [T]
-        qs_in/grid.at_node["external_sediment__flux"] : array
+        qs_in/grid.at_node["sediment__flux_from_lat"] : array
             qs_in will be in UNITS of m**3/time step. THis is the same
             units as needed for vertical incsion
 
@@ -178,7 +175,7 @@ class ValleyWiden(Component):
         # problem thta I"m not tracking cumulative lateral erosion (apparently?)
         #*** ^july 2020, actually I am tracking cumulative erosion
 #        qs_in = self._qs_in
-        #july 28, 2020: removign the above because I want qs_in reset every timestep
+        #july 28, 20202: removign the above because I want qs_in reset every timestep
         vol_lat = self._grid.at_node["volume__lateral_erosion"]
         depth_at_node = self._grid.at_node["channel__depth"]
 
@@ -194,21 +191,19 @@ class ValleyWiden(Component):
         if debug7:
             print("qs_in", qs_in)
         # clear qsin for next loop
-        qs_in = grid.add_zeros("node", "external_sediment__flux", clobber=True)
-        ###***** April 27, 2022: I can't reset this to zeros. I have to maintain
-        # the sediment flux from inlet IF  it exists
+        qs_in = grid.add_zeros("node", "sediment__flux_from_lat", clobber=True)
         #^ version of line from 1/2020. 7/28/2020: changed noclobber=False to clobber=True
-
+#        qs_in = grid.add_zeros("sediment__flux_from_lat", at="node", clobber=True)    #doesn't work
+#        qs_in = np.zeros(grid.number_of_nodes, dtype=int)
+        # ^ new version 7/28/2020
+#        qs = grid.add_zeros("node", "qs", noclobber=False)
         lat_nodes = np.zeros(grid.number_of_nodes, dtype=int)
 #        status_lat_nodes = grid.add_zeros("node", "status_lat_nodes", noclobber=False)
         status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node", clobber=True)#, noclobber=False)
         dzlat_ts = np.zeros(grid.number_of_nodes, dtype=float)
         vol_lat_dt = np.zeros(grid.number_of_nodes)
 #        da = grid.at_node["drainage_area"]
-        node_A = self._A
-        #4/25/2022 AL added thsi above. 
-        # I believe this works now along with added stuff on line 358
-        # node_A = grid.at_node["surface_water__discharge"]
+        da = grid.at_node["surface_water__discharge"]
         # ^ AL Dec 31: change using drainage area to using surface water discharge
         # that way if there is runoff added to flow accumulator, then lateral eroder will
         # pick it up. If no runoff is added, then surface water discharge is the same as 
@@ -236,7 +231,7 @@ class ValleyWiden(Component):
             # if node i is the first cell at the top of the drainage network, don't go
             # into this loop because in this case, node i won't have a "donor" node
             if i in flowdirs:
-                [lat_node, inv_rad_curv] = node_finder(grid, i, flowdirs, node_A)
+                [lat_node, inv_rad_curv] = node_finder(grid, i, flowdirs, da)
                 # node_finder returns the lateral node ID and the radius of curvature
                 lat_nodes[i] = lat_node
                 if lat_node > 0 and z[lat_node] > z[i]:
@@ -307,7 +302,7 @@ class ValleyWiden(Component):
 #                                print(frog)
                         #if blocks can't be transported: calc Elat, track undercutting
                         else:    # below is for blocks that can't be transported
-                            petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
+                            petlat = -Kl[i] * da[i] * max_slopes[i] * inv_rad_curv
                             vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
                             vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
                             # vol_diff is the volume that must be eroded from lat_node so that its
@@ -331,7 +326,7 @@ class ValleyWiden(Component):
                                     block_size[lat_node] = 0.0
 
                     else:    # below is for fresh bedrock valley walls
-                        petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
+                        petlat = -Kl[i] * da[i] * max_slopes[i] * inv_rad_curv
                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
                         vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
                         # vol_diff is the volume that must be eroded from lat_node so that its
