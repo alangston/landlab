@@ -114,10 +114,12 @@ class ValleyWiden(Component):
         else:
             self._vol_lat = grid.add_zeros("volume__lateral_erosion", at="node")
 
-        if "external_sediment__flux" in grid.at_node:
-            self._qs_in = grid.at_node["external_sediment__flux"]
+        if "inlet_sediment__flux" in grid.at_node:
+            self._qs_in_inlet = grid.at_node["inlet_sediment__flux"]
+        if "lateral_sediment__flux" in grid.at_node:
+            self._qs_in = grid.at_node["lateral_sediment__flux"]
         else:
-            self._qs_in = grid.add_zeros("external_sediment__flux", at="node")
+            self._qs_in = grid.add_zeros("lateral_sediment__flux", at="node")
 
         if "lateral_erosion__depth_increment" in grid.at_node:
             self._dzlat = grid.at_node["lateral_erosion__depth_cum"]
@@ -166,7 +168,7 @@ class ValleyWiden(Component):
         ----------
         dt : float
             Model timestep [T]
-        qs_in/grid.at_node["external_sediment__flux"] : array
+        qs_in/grid.at_node["lateral_sediment__flux"] : array
             qs_in will be in UNITS of m**3/time step. THis is the same
             units as needed for vertical incsion
 
@@ -194,9 +196,11 @@ class ValleyWiden(Component):
         if debug7:
             print("qs_in", qs_in)
         # clear qsin for next loop
-        qs_in = grid.add_zeros("node", "external_sediment__flux", clobber=True)
-        ###***** April 27, 2022: I can't reset this to zeros. I have to maintain
-        # the sediment flux from inlet IF  it exists
+        if "inlet_sediment__flux" in grid.at_node:
+            # qs_in = np.copy(self._grid.at_node["inlet_sediment__flux"])
+            qs_in = np.copy(self._qs_in_inlet)
+        else:
+            qs_in = grid.add_zeros("node", "lateral_sediment__flux", clobber=True)
         #^ version of line from 1/2020. 7/28/2020: changed noclobber=False to clobber=True
 
         lat_nodes = np.zeros(grid.number_of_nodes, dtype=int)

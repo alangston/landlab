@@ -389,8 +389,11 @@ class SedDepEroder(Component):
         self._rho_g = self._fluid_density * self._g
         
         
-        if "external_sediment__flux" in grid.at_node:
-            self._sed_into_node = self._grid.at_node["external_sediment__flux"]
+        if "inlet_sediment__flux" in grid.at_node:
+            self._inlet_sed_into_node = self._grid.at_node["inlet_sediment__flux"]
+        #     #ALL: adding April 25, 2022
+        if "lateral_sediment__flux" in grid.at_node:
+            self._lateral_sed_into_node = self._grid.at_node["lateral_sediment__flux"]
         #     #ALL: adding April 25, 2022
         else:
             self._sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
@@ -835,15 +838,21 @@ class SedDepEroder(Component):
                 #ALL***: below, if we send sediment to vertical erosion because lateral
                 # erosion is running, do not initialize this as zeros. use the
                 # values sent to the component instead.
-                if "sediment__flux_from_lat" in grid.at_node:
-                    sed_into_node = self._grid.at_node["sediment__flux_from_lat"]
+                if "inlet_sediment__flux" in grid.at_node and "lateral_sediment__flux" in grid.at_node:
+                    sed_into_node = np.copy(self._inlet_sed_into_node) + self._grid.at_node["lateral_sediment__flux"]
+                elif "inlet_sediment__flux" in grid.at_node:
+                    sed_into_node = np.copy(self._inlet_sed_into_node)
+                elif "lateral_sediment__flux" in grid.at_node:
+                    sed_into_node = self._grid.at_node["lateral_sediment__flux"]
+                    #4/27/2022: this below worked
+                    # sed_into_node = np.copy(self._grid.at_node["inlet_sediment__flux"])
                     #ALL:I was right that sed into node has to be in volume per dt,
                     # where dt = 100 years or so, or 3.15e10 seconds
                     # print("sed_into_node, vertical", sed_into_node)
-######COME BACK HERE. INLET WON'T WORK WITH LATERAL EROSION RIGHT NOW
-                elif self._sed_into_node is not None:
-                    sed_into_node = np.copy(self._sed_into_node)
-                    #April 25, 2022: horrible coding above, but it works for now. 
+# ######COME BACK HERE. INLET WON'T WORK WITH LATERAL EROSION RIGHT NOW
+#                 elif self._sed_into_node is not None:
+#                     sed_into_node = np.copy(self._sed_into_node)
+#                     #April 25, 2022: horrible coding above, but it works for now. 
                 else:
                     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                     # sed_into_node[578] =2.5e5
