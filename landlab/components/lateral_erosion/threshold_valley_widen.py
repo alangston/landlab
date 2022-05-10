@@ -263,7 +263,9 @@ class ValleyWiden(Component):
     #                            print(frog)
                             #if blocks transported, do it.
                             # volume of pile of stuff
-                            pile_volume = (z[lat_node] - z[i]) * grid.dx ** 2
+                            #may 10, 2022, changed this to the pile volume between the node that is downstream of 
+                                # the primary node and lateral node, not pile volume between primary and lateral. 
+                            pile_volume = (z[lat_node] - z[flowdirs[i]]) * grid.dx ** 2
                             # below is the conversion of trans capacity into m^3/model time step
                             transcap_here_ts = chan_trans_cap[i]*dt*self.sec_per_year
                             avail_trans_cap = transcap_here_ts * (1.0-rel_sed_flux[i])
@@ -284,7 +286,9 @@ class ValleyWiden(Component):
                                 qs_in[flowdirs[i]] += pile_volume 
                                 # then calculate how much elevation will be lost on teh lateral node
                                 # from that downstream transport
-                                dzlat_ts[lat_node] = z[i] - z[lat_node]
+                                #may 10, 2022, changed this to the elevation diff between the node that is downstream of 
+                                # the primary node and lateral node, not elev diff between primary and lateral. 
+                                dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node]
                                 #finally, reset block size to reflect fresh bedrock
                                 block_size[lat_node] = 0.0
                                 status_lat_nodes[lat_node] = 5
@@ -298,7 +302,7 @@ class ValleyWiden(Component):
                                 #use all available trans capacity to move as much
                                 # pile as possible
                                 # note I use negative availtranscap to make dzlat a negative number
-                                dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, z[i] - z[lat_node])
+                                dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, z[flowdirs[i]] - z[lat_node])
                                 # ^ this will give the elevation that can be removed from 
                                 # the pile of stuff that is the lateral node.
                                 """
