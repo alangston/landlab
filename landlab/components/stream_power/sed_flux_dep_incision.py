@@ -961,6 +961,10 @@ class SedDepEroder(Component):
                             rel_sed_flux[i] = 1.0
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
                             dz_here = -vol_dropped / cell_area
+                            """
+                            Adding/trying this on May 10, 2022. AL
+                            """
+                            dz_here = 0.
 #                            print("vol_dropped", vol_dropped)
                             # with the pits, we aim to inhibit incision, but
                             # depo is OK. We have already zero'd any adverse
@@ -978,6 +982,11 @@ class SedDepEroder(Component):
                                     flooded_depths[i] += dz_here
                                 else:
                                     dz_here = -flood_depth
+                                    """
+                                    Adding/trying this on May 10, 2022. AL
+                                    to fix hole digging/weird deposition
+                                    """
+                                    dz_here = 0.0
                                     vol_pass = height_excess * cell_area
                                     # ^bit cheeky?
                                     flooded_depths[i] = 0.0

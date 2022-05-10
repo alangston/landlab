@@ -253,7 +253,7 @@ class ValleyWiden(Component):
                         tau_crit = block_size[lat_node]*self.g * (self.sed_density - self.fluid_density) * self.shields_thresh
                         #calc, can blocks be transported?
                         if channel__bed_shear_stress[i] > tau_crit:
-                            if debug3 and lat_node == 366:
+                            if debug3 and lat_node == 438:
                                 print(" ")
                                 print("depth_at_node", depth_at_node)
                                 print("lat_node", lat_node)
@@ -267,20 +267,9 @@ class ValleyWiden(Component):
                             # below is the conversion of trans capacity into m^3/model time step
                             transcap_here_ts = chan_trans_cap[i]*dt*self.sec_per_year
                             avail_trans_cap = transcap_here_ts * (1.0-rel_sed_flux[i])
-                            if debug3 and lat_node == 366:
-                                print(" ")
-                                print("pile volume", pile_volume)
-                                print("trans cap here", chan_trans_cap[i])
-                                print("transcaphere_ts", transcap_here_ts)
-                                print("avail trans cap", avail_trans_cap)
-                                print("dt", dt)
                             if avail_trans_cap >= pile_volume:
                                 #if all sediment from lateral erosion can be transported
                                 # by teh channel, send it all down stream
-                                """
-                                COMMENTED OUT LINE BELOW FOR TEST
-                                MAY 9, 2022, 3:10 PM
-                                """
                                 qs_in[flowdirs[i]] += pile_volume 
                                 # then calculate how much elevation will be lost on teh lateral node
                                 # from that downstream transport
@@ -301,10 +290,6 @@ class ValleyWiden(Component):
                                 dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, z[i] - z[lat_node])
                                 # ^ this will give the elevation that can be removed from 
                                 # the pile of stuff that is the lateral node.
-                                """
-                                COMMENTED OUT LINE BELOW FOR TEST
-                                MAY 9, 2022, 3:10 PM
-                                """
                                 qs_in[flowdirs[i]] += avail_trans_cap
                                 # ^ send the sediment downstream. this is volume of 
                                 # sediment  in m**3(no time scale in here, but this
