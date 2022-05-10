@@ -288,7 +288,8 @@ class ValleyWiden(Component):
                                 # from that downstream transport
                                 #may 10, 2022, changed this to the elevation diff between the node that is downstream of 
                                 # the primary node and lateral node, not elev diff between primary and lateral. 
-                                dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node]
+                                # plus half mm to prevent hole digging
+                                dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node] + 0.0005
                                 #finally, reset block size to reflect fresh bedrock
                                 block_size[lat_node] = 0.0
                                 status_lat_nodes[lat_node] = 5
@@ -302,7 +303,8 @@ class ValleyWiden(Component):
                                 #use all available trans capacity to move as much
                                 # pile as possible
                                 # note I use negative availtranscap to make dzlat a negative number
-                                dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, z[flowdirs[i]] - z[lat_node])
+                                # may 10, 2022. plus half mm to prevent hole digging
+                                dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, (z[flowdirs[i]] - z[lat_node] +0.0005))
                                 # ^ this will give the elevation that can be removed from 
                                 # the pile of stuff that is the lateral node.
                                 """
