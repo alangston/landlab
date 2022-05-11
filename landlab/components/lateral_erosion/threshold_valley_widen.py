@@ -398,8 +398,8 @@ class ValleyWiden(Component):
                         """
                         # vol_diff is the volume that must be eroded from lat_node so that its
                         # elevation is the same as primary node
-                        # voldiff = (depth_at_node[i]) * grid.dx ** 2
-                        voldiff = (z[lat_node] - z[i]) * grid.dx **2 * 0.1
+                        voldiff = (depth_at_node[i]) * grid.dx ** 2
+                        # voldiff = (z[lat_node] - z[i]) * grid.dx **2 * 0.1
 
                         status_lat_nodes[lat_node] = 1
                         #^node status=1 means that now this br valley wall has experienced some erosion
