@@ -438,11 +438,11 @@ def _imshow_grid_values(
     output=None,
 ):
     cmap = plt.get_cmap(cmap)
-
-    if color_for_closed is not None:
-        cmap.set_bad(color=color_for_closed)
-    else:
-        cmap.set_bad(alpha=0.0)
+# AL, May 11, 2022: I commented out these lines below because getting warning messages in spyder
+    # if color_for_closed is not None:
+    #     cmap.set_bad(color=color_for_closed)
+    # else:
+    #     cmap.set_bad(alpha=0.0)
 
     if isinstance(grid, RasterModelGrid):
         if values.ndim != 2:
@@ -478,9 +478,9 @@ def _imshow_grid_values(
         myimage.set_rasterized(True)
         plt.gca().set_aspect(1.0)
         plt.autoscale(tight=True)
-
+# AL, May 11, 2022: I removed norm=norm in line below because getting warning messages in spyder
         if allow_colorbar:
-            cb = plt.colorbar(norm=norm, shrink=shrink)
+            cb = plt.colorbar(shrink=shrink)
             if colorbar_label:
                 cb.set_label(colorbar_label)
     else:
