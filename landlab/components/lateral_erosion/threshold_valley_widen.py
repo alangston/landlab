@@ -182,8 +182,14 @@ class ValleyWiden(Component):
 #        qs_in = self._qs_in
         #july 28, 2020: removign the above because I want qs_in reset every timestep
         vol_lat = self._grid.at_node["volume__lateral_erosion"]
+        """
+        trying this to fix hole digging because of qsin = nan because depth 
+        at node = nan because of Dan's sneakiness! in sed flux dependent.
+        """
         depth_at_node = self._grid.at_node["channel__depth"]
 
+        depth_nans = np.where(np.isnan(self.grid.at_node["channel__depth"])==True)
+        depth_at_node[depth_nans] = 0.0
         channel__bed_shear_stress = self._grid.at_node["channel__bed_shear_stress"]
         block_size = self._grid.at_node["block_size"]
         Dchar = self.Dchar
@@ -284,6 +290,12 @@ class ValleyWiden(Component):
                                 MAY 9, 2022, 3:10 PM
                                 """
                                 qs_in[flowdirs[i]] += pile_volume 
+                                if np.any(np.isnan(qs_in))==True:
+                                    print("we got a nan in qs_in, line 288")
+                                    print("time = ", precip.elapsed_time)
+                                    toc=time.time()
+                                    print("elapsed time = ", toc-tic)
+                                    print(frog)
                                 # then calculate how much elevation will be lost on teh lateral node
                                 # from that downstream transport
                                 #may 10, 2022, changed this to the elevation diff between the node that is downstream of 
@@ -312,6 +324,12 @@ class ValleyWiden(Component):
                                 MAY 9, 2022, 3:10 PM
                                 """
                                 qs_in[flowdirs[i]] += avail_trans_cap
+                                if np.any(np.isnan(qs_in))==True:
+                                    print("we got a nan in qs_in, line 316")
+                                    print("time = ", precip.elapsed_time)
+                                    toc=time.time()
+                                    print("elapsed time = ", toc-tic)
+                                    print(frog)
                                 # ^ send the sediment downstream. this is volume of 
                                 # sediment  in m**3(no time scale in here, but this
                                 # is volume downstream over this timestep, dt)
@@ -340,7 +358,16 @@ class ValleyWiden(Component):
     #                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
                             voldiff = depth_at_node[i] * grid.dx ** 2
                             # below, send sediment downstream, units of volume
+                            """
+                            May11, remove qs_in
+                            """
                             qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
+                            if np.any(np.isnan(qs_in))==True:
+                                print("we got a nan in qs_in, line 347")
+                                print("time = ", precip.elapsed_time)
+                                toc=time.time()
+                                print("elapsed time = ", toc-tic)
+                                print(frog)
                             status_lat_nodes[lat_node] = 3
                             if debug3 and lat_node == 438:
                                 print("blocks can't transport")
@@ -381,7 +408,35 @@ class ValleyWiden(Component):
                             block_size[lat_node] = Dchar
                             status_lat_nodes[lat_node] = 2
                         # send sediment downstream. for bedrock erosion only
+                        """
+                        May11, remove qs_in
+                        """
                         qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
+                        if np.any(np.isnan(qs_in))==True:
+                                print("we got a nan in qs_in, line 397")
+                                print(" ")
+                                print("downstream node", flowdirs[i])
+                                print("qs_in[flowdirs[i]]", qs_in[flowdirs[i]])
+                                print("petlat", petlat)
+                                print("depth_at_nodes", depth_at_node[i])
+                                print("transcap", transcap_here_ts)
+                                print("relsedflux", rel_sed_flux[i])
+                                print("avail_trans_cap", avail_trans_cap)
+                                print("pile_vol", pile_volume)
+                                print("dzlat[latnode]", dzlat_ts[lat_node])
+                                print("z[latnode]",z[lat_node])
+                                print("z[i]",z[i])
+                                print(" ")
+                                print("pile volume", pile_volume)
+                                print("trans cap here", chan_trans_cap[i])
+                                print("transcaphere_ts", transcap_here_ts)
+                                print("avail trans cap", avail_trans_cap)
+                                print("dt", dt)
+                                print("time = ", precip.elapsed_time)
+                                toc=time.time()
+                                print("elapsed time = ", toc-tic)
+
+                                print(frog)
 #                        print("qs_in[flowdirs[i]] AFTER", qs_in[flowdirs[i]])
 #        qs[:] = qs_in
         debug2=0

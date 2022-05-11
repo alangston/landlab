@@ -367,7 +367,7 @@ class SedDepEroder(Component):
         self._pseudoimplicit_repeats = pseudoimplicit_repeats
 
         self._A = return_array_at_node(grid, discharge_field)
-        ###^^^***** april 25, above from stream_power
+        ###^^^***** april 25, above from stream_power AL
         self._link_S_with_trailing_blank = np.zeros(grid.number_of_links + 1)
         # ^needs to be filled with values in execution
         self._countactive_links = np.zeros_like(
