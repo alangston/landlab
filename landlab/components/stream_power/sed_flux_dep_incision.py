@@ -962,9 +962,9 @@ class SedDepEroder(Component):
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
                             dz_here = -vol_dropped / cell_area
                             """
-                            Adding/trying this on May 10, 2022. AL
+                            Adding/trying this  below on May 10, 2022. AL
                             """
-                            dz_here = 0.
+                            # dz_here = 0.
 #                            print("vol_dropped", vol_dropped)
                             # with the pits, we aim to inhibit incision, but
                             # depo is OK. We have already zero'd any adverse
