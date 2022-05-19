@@ -838,9 +838,7 @@ class SedDepEroder(Component):
                 #ALL***: below, if we send sediment to vertical erosion because lateral
                 # erosion is running, do not initialize this as zeros. use the
                 # values sent to the component instead.
-                if "inlet_sediment__flux" in grid.at_node and "lateral_sediment__flux" in grid.at_node:
-                    sed_into_node = np.copy(self._inlet_sed_into_node) + self._grid.at_node["lateral_sediment__flux"]
-                elif "inlet_sediment__flux" in grid.at_node:
+                if "inlet_sediment__flux" in grid.at_node:
                     sed_into_node = np.copy(self._inlet_sed_into_node)
                 elif "lateral_sediment__flux" in grid.at_node:
                     sed_into_node = self._grid.at_node["lateral_sediment__flux"]

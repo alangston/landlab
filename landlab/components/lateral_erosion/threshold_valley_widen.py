@@ -116,10 +116,10 @@ class ValleyWiden(Component):
 
         if "inlet_sediment__flux" in grid.at_node:
             self._qs_in_inlet = grid.at_node["inlet_sediment__flux"]
-        if "lateral_sediment__flux" in grid.at_node:
-            self._qs_in = grid.at_node["lateral_sediment__flux"]
-        else:
-            self._qs_in = grid.add_zeros("lateral_sediment__flux", at="node")
+        # if "lateral_sediment__flux" in grid.at_node:
+        #     self._qs_in = grid.at_node["lateral_sediment__flux"]
+        # else:
+        #     self._qs_in = grid.add_zeros("lateral_sediment__flux", at="node")
 
         if "lateral_erosion__depth_increment" in grid.at_node:
             self._dzlat = grid.at_node["lateral_erosion__depth_cum"]
