@@ -152,11 +152,11 @@ class ValleyWiden(Component):
         elif solver == "adaptive":
             self.run_one_step = self.run_one_step_adaptive
         self._Kl = Kl  # can be overwritten with spatially variable
-        self._g = g
+        self.g = g
         self._b_sde = b_sde
-        self._sed_density = sed_density
-        self._fluid_density = fluid_density
-        self._shields_thresh = shields_thresh
+        self.sed_density = sed_density
+        self.fluid_density = fluid_density
+        self.shields_thresh = shields_thresh
         self._sec_per_year = sec_per_year
         self._Dchar = Dchar
         self._Qs_thresh_prefactor = Qs_thresh_prefactor
@@ -520,10 +520,10 @@ def calc_new_transport_capacities(self, grid, Dchar):
     do those calculations. 
     """
     # line 512 from SedDepEroder
-    shields_thresh = self._shields_thresh
-    g = self._g
-    sed_density = self._sed_density
-    fluid_density = self._fluid_density
+    shields_thresh = self.shields_thresh
+    g = self.g
+    sed_density = self.sed_density
+    fluid_density = self.fluid_density
     Qs_thresh_prefactor = self._Qs_thresh_prefactor
     Qs_power_onAthresh = self._Qs_power_onAthresh
     Qs_power_onA = self._Qs_power_onA
