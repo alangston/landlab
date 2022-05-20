@@ -62,12 +62,7 @@ class ValleyWiden(Component):
         sed_density=2700,
         fluid_density=1000,
         shields_thresh=0.05,
-        sec_per_year=31557600.0,
-        b_sde = 0.5,    #b_sp from sedflux dep eroder
-        Qs_thresh_prefactor = 3.668127525963118e-8,    #from sedflux dep eroder
-        Qs_power_onAthresh = 0.33333333333333,    #from sedflux dep eroder
-        Qs_prefactor = 3.5972042802486196e-7,    #from sedflux dep eroder
-        Qs_power_onA = 0.6333333333333333,    #from sedflux dep eroder
+        sec_per_year=31557600.0
     ):
         super(ValleyWiden, self).__init__(grid)
 
@@ -152,18 +147,12 @@ class ValleyWiden(Component):
         elif solver == "adaptive":
             self.run_one_step = self.run_one_step_adaptive
         self._Kl = Kl  # can be overwritten with spatially variable
-        self._g = g
-        self._b_sde = b_sde
-        self._sed_density = sed_density
-        self._fluid_density = fluid_density
-        self._shields_thresh = shields_thresh
-        self._sec_per_year = sec_per_year
-        self._Dchar = Dchar
-        self._Qs_thresh_prefactor = Qs_thresh_prefactor
-        self._Qs_power_onAthresh = Qs_power_onAthresh
-        self._Qs_power_onA = Qs_power_onA
-        self._Qs_prefactor = Qs_prefactor
-
+        self.g = g
+        self.sed_density = sed_density
+        self.fluid_density = fluid_density
+        self.shields_thresh = shields_thresh
+        self.sec_per_year = sec_per_year
+        self.Dchar = Dchar
         # handling Kv for floats (inwhich case it populates an array N_nodes long) or
         # for arrays of Kv. Checks that length of Kv array is good.
         self._Kl = np.ones(self._grid.number_of_nodes, dtype=float) * Kl
@@ -203,12 +192,11 @@ class ValleyWiden(Component):
         depth_at_node[depth_nans] = 0.0
         channel__bed_shear_stress = self._grid.at_node["channel__bed_shear_stress"]
         block_size = self._grid.at_node["block_size"]
-        Dchar = self._Dchar
+        Dchar = self.Dchar
         rel_sed_flux = self._grid.at_node["channel_sediment__relative_flux"]
         chan_trans_cap = self._grid.at_node["channel_sediment__volumetric_transport_capacity"]
-        new_transport_capacities = calc_new_transport_capacities(self, grid, Dchar)
+        new_transport_capacities = calc_new_transport_capacities(grid, Dchar)
         grid.at_node["channel_sediment__volumetric_transport_capacity"] = new_transport_capacities
-
         #^ALL 7/282020: this is from sed_flux_dep_incision.py
         z = grid.at_node["topographic__elevation"]
 
@@ -228,6 +216,7 @@ class ValleyWiden(Component):
         status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node", clobber=True)#, noclobber=False)
         dzlat_ts = np.zeros(grid.number_of_nodes, dtype=float)
         vol_lat_dt = np.zeros(grid.number_of_nodes)
+#        da = grid.at_node["drainage_area"]
         node_A = self._A
         #4/25/2022 AL added thsi above. 
         # I believe this works now along with added stuff on line 358
@@ -250,9 +239,7 @@ class ValleyWiden(Component):
         # reverse list so we go from upstream to down stream
         dwnst_nodes = dwnst_nodes[::-1]
         max_slopes[:] = max_slopes.clip(0)
-        print("dzlat beginning", self._dzlat)
-        new_transport_capacities = calc_new_transport_capacities(self, grid, Dchar)
-        grid.at_node["channel_sediment__volumetric_transport_capacity"] = new_transport_capacities
+#        print("dzlat beginning", self._dzlat)
         #ALL***: below is only for finding the lateral node
         for i in dwnst_nodes:
             # potential lateral erosion initially set to 0
@@ -512,53 +499,46 @@ class ValleyWiden(Component):
 #        print("z in lat", z)
         return grid
 
-def calc_new_transport_capacities(self, grid, Dchar):
+def calc_new_transport_capacities(mg, Dchar_lat):
     """
     Below is using model outputs to calculate transport capacities. I need this to calculate
     different transport capacities for different grain sizes. 
     the line numbers below refer to places in teh sed_flux_dep_incision code that 
     do those calculations. 
     """
-    # line 512 from SedDepEroder
-    shields_thresh = self._shields_thresh
-    g = self._g
-    sed_density = self._sed_density
-    fluid_density = self._fluid_density
-    Qs_thresh_prefactor = self._Qs_thresh_prefactor
-    Qs_power_onAthresh = self._Qs_power_onAthresh
-    Qs_power_onA = self._Qs_power_onA
-    Qs_prefactor = self._Qs_prefactor
-    b_sde = self._b_sde
-    runoff_rate = grid.at_node["water__unit_flux_in"]
-    # print("Dchar", Dchar)
-    # print("g", g)
-    # print("runoff rate", runoff_rate)
+    # line 512
+    # Dchar2 = latero.Dchar
     thresh_from_Dchar = (
-        shields_thresh
-        * g
-        * (sed_density - fluid_density)
-        * Dchar
+        sde._shields_crit
+        * sde._g
+        * (sde._sed_density - sde._fluid_density)
+        * Dchar_lat
     )
-    # line 777 from SedDepEroder    
-    node_A = grid.at_node["drainage_area"]
-    node_A = grid.at_node["surface_water__discharge"]
+    # line 777
+    
+    node_A = mg.at_node["drainage_area"]
+    node_A = mg.at_node["surface_water__discharge"]
 
-    node_S = grid.at_node["topographic__steepest_slope"]
+    node_S = mg.at_node["topographic__steepest_slope"]
     transport_capacities_thresh = (
     thresh_from_Dchar
-    * Qs_thresh_prefactor
-    * runoff_rate ** (0.66667 * b_sde)
-    * node_A**Qs_power_onAthresh
+    * sde._Qs_thresh_prefactor
+    * sde._runoff_rate ** (0.66667 * sde._b)
+    * node_A**sde._Qs_power_onAthresh
     )
-    #line 791 from SedDepEroder
+    #line 791
     transport_capacity_prefactor_withA = (
-    Qs_prefactor
-    * runoff_rate ** (0.6 + b_sde / 15.0)
-    * node_A**Qs_power_onA
+    sde._Qs_prefactor
+    * sde._runoff_rate ** (0.6 + sde._b / 15.0)
+    * node_A**sde._Qs_power_onA
     )
     
-    #line 812 from SedDepEroder
+    #line 812
     downward_slopes = node_S.clip(0.0)
+    # this removes the tendency to transfer material against
+    # gradient, including in any lake depressions
+    # we DON'T immediately zero trp capacity in the lake.
+    # positive_slopes = np.greater(downward_slopes, 0.)
     slopes_tothe07 = downward_slopes**0.7
     transport_capacities_S = (
     transport_capacity_prefactor_withA * slopes_tothe07
