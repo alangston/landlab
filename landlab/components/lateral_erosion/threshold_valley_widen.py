@@ -157,7 +157,7 @@ class ValleyWiden(Component):
         self.sed_density = sed_density
         self.fluid_density = fluid_density
         self.shields_thresh = shields_thresh
-        self._sec_per_year = sec_per_year
+        self.sec_per_year = sec_per_year
         self._Dchar = Dchar
         self._Qs_thresh_prefactor = Qs_thresh_prefactor
         self._Qs_power_onAthresh = Qs_power_onAthresh
@@ -250,7 +250,6 @@ class ValleyWiden(Component):
         # reverse list so we go from upstream to down stream
         dwnst_nodes = dwnst_nodes[::-1]
         max_slopes[:] = max_slopes.clip(0)
-        print("dzlat beginning", self._dzlat)
         new_transport_capacities = calc_new_transport_capacities(self, grid, Dchar)
         grid.at_node["channel_sediment__volumetric_transport_capacity"] = new_transport_capacities
         #ALL***: below is only for finding the lateral node
