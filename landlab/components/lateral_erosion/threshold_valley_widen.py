@@ -46,6 +46,24 @@ class ValleyWiden(Component):
         When solver is set to "adaptive", then a valid Landlab FlowAccumulator
         must be passed. It will be run within sub-timesteps in order to update
         the flow directions and drainage area.
+        
+    Special note on valley widen parameters below: {b_sde, Qs_thresh_prefactor, Qs_power_onA,
+    Qs_power_onAthresh, Qs_prefactor}. These come from the SedFluxDependent Eroder.
+    If any of these parameters in SedFluxDep are changed from default: {b_sp, c_sp,
+    k_w, fluid_density, sediment_density, k_Q, mannings_n}, then you cannot use
+    the default values of valley widen parameters from SedDepEroder. You must pass
+    values of {b_sde, Qs_thresh_prefactor, Qs_power_onA, Qs_power_onAthresh,
+    Qs_prefactor} calculated in SedDepEroder to valley widen component. 
+        
+    b_sde = 0.5,    #b_sp from sedflux dep eroder
+    Qs_thresh_prefactor = 3.668127525963118e-8,    #from sedflux dep eroder
+    Qs_power_onAthresh = 0.33333333333333,    #from sedflux dep eroder
+    Qs_prefactor = 3.5972042802486196e-7,    #from sedflux dep eroder
+    Qs_power_onA = 0.6333333333333333,    #from sedflux dep eroder
+    b_sde : float
+        Power on drainage area to give discharge. This is from SedDepEroder
+    I have a python script with a demo of what I described above named "valley_widen_tests_tcap.py"
+    I will turn this into a notebook someday. 
 
     """
 
