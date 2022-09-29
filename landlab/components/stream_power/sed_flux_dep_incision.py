@@ -710,7 +710,9 @@ class SedDepEroder(Component):
         # node_A = grid.at_node["drainage_area"]
         node_A = self._A
         #4/25/2022 AL added thsi above. 
-        # I believe this works now along with added stuff on line 358
+        # I believe this works now along with added stuff on line 358. 
+		# Yes, the stuff added on line 358 was allowing surface_water__discharge to 
+		# be used instead of drainage area.
         # print("inside component")
         # print("node_A", node_A[578])
         flow_receiver = grid.at_node["flow__receiver_node"]
@@ -961,6 +963,9 @@ class SedDepEroder(Component):
                             dz_here = -vol_dropped / cell_area
                             """
                             Adding/trying this  below on May 10, 2022. AL
+							*** September 29, 2022: this is a major hack that needs to be addressed.
+							It worked for CSDMS because I guess I had to do something to suppress
+							giant mounds of sediment forming. 
                             """
                             dz_here = 0.
 #                            print("vol_dropped", vol_dropped)
