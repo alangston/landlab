@@ -524,16 +524,70 @@ class LateralEroderSolo(Component):
                         # zero
                         vol_lat[lat_node] = 0.0
                         if dzlat_ts[lat_node] > 0:
+                            print(" ")
                             print("dzlat_ts >0")
                             print("dzlat_ts = ", dzlat_ts[lat_node])
                             print("z[i]", z[i])
                             print("z[flowdirs[i]]", z[flowdirs[i]])
                             print("z[lat_node]", z[lat_node])
                             print(frog)
-        # erode topography from lateral erosion.
-        dz = dzlat_ts
+
         grid.at_node["lateral_erosion__depth_cum"][:] += dzlat_ts
         #^ AL: this only keeps track of cumulative lateral erosion at each cell.
         # change height of landscape
-        z[:] += dz
+        # erode topography from lateral erosion.
+        dz = dzlat_ts
+        
+        # dz_all_soil = abs(dz)-grid.at_node["soil__depth"]
+        new_soil_depth = grid.at_node["soil__depth"]+dz
+        # ^^ above, calclulate new soil depths by eroding the soil first
+
+        where_bedrock_ero = np.where(new_soil_depth < 0)[0]
+        # ^find where new soil depth is less than zero
+        grid.at_node["bedrock__elevation"][where_bedrock_ero] += new_soil_depth[where_bedrock_ero]
+        # ^ reduce bedrock elevations by the amount of negative soil depth
+        grid.at_node["soil__depth"] = np.clip(new_soil_depth,0, 1e9)
+        # ^ make negative soil depths 0
+
+        debug=0
+        if debug:
+            if np.any(new_soil_depth < 0):
+                print("")
+                print("where_bedrockero", where_bedrock_ero)
+    
+                print("dz", dz[where_bedrock_ero])
+                print("br elev before", grid.at_node["bedrock__elevation"][where_bedrock_ero])
+                grid.at_node["bedrock__elevation"] += new_soil_depth[where_bedrock_ero]
+    
+                print("soil depth", grid.at_node["soil__depth"][where_bedrock_ero])
+                print("new soil depth", new_soil_depth[where_bedrock_ero])
+                print("br elev after", grid.at_node["bedrock__elevation"][where_bedrock_ero])
+                grid.at_node["soil__depth"] = np.clip(new_soil_depth,0, 1e9)
+                print("new new soil depth", grid.at_node["soil__depth"][where_bedrock_ero])
+    
+                print(frog)
+        z[cores] = grid.at_node["bedrock__elevation"][cores] + grid.at_node["soil__depth"][cores]
+        # z[:] += dz
         return grid
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
