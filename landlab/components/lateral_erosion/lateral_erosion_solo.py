@@ -358,9 +358,9 @@ class LateralEroderSolo(Component):
 
         # below is from threshold valley widen
         if "lateral_erosion__depth_increment" in grid.at_node:
-            self._dzlat_cumu = grid.at_node["lateral_erosion__depth_cum"]
+            self._dzlat_cumu = grid.at_node["lateral_erosion__depth_cumu"]
         else:
-            self._dzlat_cumu = grid.add_zeros("lateral_erosion__depth_cum", at="node")
+            self._dzlat_cumu = grid.add_zeros("lateral_erosion__depth_cumu", at="node")
         # for backward compatibility (remove in version 3.0.0+)
         # AL: I changed the line below from influx to OUTFLUX
         grid.at_node["sediment__flux"] = grid.at_node["sediment__outflux"]
@@ -443,10 +443,6 @@ class LateralEroderSolo(Component):
         dwnst_nodes = dwnst_nodes[::-1]
         max_slopes[:] = max_slopes.clip(0)
         for i in dwnst_nodes:
-            # calc deposition and erosion
-            #dep = alph * qs_in[i] / da[i]
-            #ero = -Kv[i] * da[i] ** (0.5) * max_slopes[i]
-            #dzver[i] = dep + ero
             # potential lateral erosion initially set to 0
             petlat = 0.0
             # water depth in meters, needed for lateral erosion calc
@@ -477,20 +473,12 @@ class LateralEroderSolo(Component):
                         # volume of lateral erosion per timestep
                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * wd
 
-            # send sediment downstream. sediment eroded from vertical incision
-            # and lateral erosion is sent downstream
-            #            print("debug before 406")
-            # qs_in[flowdirs[i]] += (
-                # qs_in[i] - (petlat * grid.dx * wd)
-            #)  # qsin to next node
+            # send sediment downstream. sediment eroded from lateral erosion is sent downstream
             qs_in[flowdirs[i]] +=abs(petlat) * grid.dx * wd
-        #qs[:] = qs_in - (dzver * grid.dx**2)
-        #qs[:] = qs + qs_in
+        #below, update the sediment flux field to include sediment that was eroded through lateral erosion.
         grid.at_node['sediment__flux'][cores] += qs_in[cores]
-        """
-        **** Jan 4, 2022 come back to this qs. do I need it? YES
-        ** check sign of petlat on line 507
-        """
+        # below, vol_lat tracks the volume of material that has been eroded through lateral erosion at each cell
+        # through time. In code further down, vol_lat is reset to zero when elevation of lateral node is reset.
         vol_lat[:] += vol_lat_dt * dt
         # this loop determines if enough lateral erosion has happened to change
         # the height of the neighbor node.
@@ -532,14 +520,11 @@ class LateralEroderSolo(Component):
                             print("z[lat_node]", z[lat_node])
                             print(frog)
 
-        grid.at_node["lateral_erosion__depth_cum"][:] += dzlat_ts
+        grid.at_node["lateral_erosion__depth_cumu"][:] += dzlat_ts
         #^ AL: this only keeps track of cumulative lateral erosion at each cell.
-        # change height of landscape
-        # erode topography from lateral erosion.
-        dz = dzlat_ts
         
-        # dz_all_soil = abs(dz)-grid.at_node["soil__depth"]
-        new_soil_depth = grid.at_node["soil__depth"]+dz
+        # update erosion from soil__depth and if necessary bedrock__elevation        
+        new_soil_depth = grid.at_node["soil__depth"]+dzlat_ts
         # ^^ above, calclulate new soil depths by eroding the soil first
 
         where_bedrock_ero = np.where(new_soil_depth < 0)[0]
@@ -555,7 +540,7 @@ class LateralEroderSolo(Component):
                 print("")
                 print("where_bedrockero", where_bedrock_ero)
     
-                print("dz", dz[where_bedrock_ero])
+                print("dz", dzlat_ts[where_bedrock_ero])
                 print("br elev before", grid.at_node["bedrock__elevation"][where_bedrock_ero])
                 grid.at_node["bedrock__elevation"] += new_soil_depth[where_bedrock_ero]
     
@@ -567,7 +552,6 @@ class LateralEroderSolo(Component):
     
                 print(frog)
         z[cores] = grid.at_node["bedrock__elevation"][cores] + grid.at_node["soil__depth"][cores]
-        # z[:] += dz
         return grid
 
 
