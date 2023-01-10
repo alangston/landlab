@@ -251,8 +251,9 @@ class LateralEroderSolo(Component):
         grid,
         latero_mech="UC",
         alph=0.8,
-        Kv=0.001,
+        K_br=0.001,
         Kl_ratio=1.0,
+        K_sed=0.0015,
         solver="basic",
         flow_accumulator=None,
     ):
@@ -266,7 +267,7 @@ class LateralEroderSolo(Component):
             model and "TB" for total block erosion
         alph : float, optional (defaults to 0.8)
             Parameter describing potential for deposition, dimensionless
-        Kv : float, node array, or field name
+        K_br : float, node array, or field name
             Bedrock erodibility in vertical direction, 1/years
         Kl_ratio : float, optional (defaults to 1.0)
             Ratio of lateral to vertical bedrock erodibility, dimensionless
@@ -318,9 +319,9 @@ class LateralEroderSolo(Component):
                 )
             )
 
-        if Kv is None:
+        if K_br is None:
             raise ValueError(
-                "Kv must be set as a float, node array, or field name. It was None."
+                "K_br must be set as a float, node array, or field name. It was None."
             )
 
         if solver == "adaptive":
@@ -379,13 +380,13 @@ class LateralEroderSolo(Component):
         elif solver == "adaptive":
             self.run_one_step = self.run_one_step_adaptive
         self._alph = alph
-        self._Kv = Kv  # can be overwritten with spatially variable
-        self._Klr = float(Kl_ratio)  # default ratio of Kv/Kl is 1. Can be overwritten
+        self._K_br = K_br  # can be overwritten with spatially variable
+        self._Klr = float(Kl_ratio)  # default ratio of K_br/Kl is 1. Can be overwritten
+        self._K_sed = K_sed
 
-
-        # handling Kv for floats (inwhich case it populates an array N_nodes long) or
-        # for arrays of Kv. Checks that length of Kv array is good.
-        self._Kv = np.ones(self._grid.number_of_nodes, dtype=float) * Kv
+        # handling K_br for floats (inwhich case it populates an array N_nodes long) or
+        # for arrays of K_br. Checks that length of K_br array is good.
+        self._K_br = np.ones(self._grid.number_of_nodes, dtype=float) * K_br
 
     def run_one_step_basic(self, dt=1.0):
         """Calculate vertical and lateral erosion for a time period 'dt'.
@@ -399,7 +400,9 @@ class LateralEroderSolo(Component):
         grid = self._grid
         UC = self._UC
         TB = self._TB
-        Kv = self._Kv
+        K_br = self._K_br
+        K_sed = self._K_sed
+
         qs_in = self._qs_in
         qs = self._qs
         alph = self._alph
@@ -412,7 +415,7 @@ class LateralEroderSolo(Component):
         # confusion with other uses of runoff
         runoffms = (Klr * F / kw) ** 2
         # Kl is calculated from ratio of lateral to vertical K parameters
-        Kl = Kv * Klr
+        Kl = K_br * Klr
         z = grid.at_node["topographic__elevation"]
         
         """
@@ -470,20 +473,23 @@ class LateralEroderSolo(Component):
                         soil_lat_node = grid.at_node["soil__depth"][i]
                         bedrock_lat_node = z_lat_node - soil_lat_node
                         br_percent = bedrock_lat_node/z_lat_node
-                        s_percent = soil_lat_node/z_lat_node
-                        debug9 = 1
+                        sed_percent = soil_lat_node/z_lat_node
+                        petlat_br = -Kl[i] * da[i] * max_slopes[i] * inv_rad_curv *br_percent
+                        petlat_sed = -K_sed * da[i] * max_slopes[i] * inv_rad_curv *sed_percent
+                        debug9 = 0
                         if debug9:
                             print(" ")
                             print("z[lat_node]", z_lat_node)
                             print("soi[lat_node]", soil_lat_node)
                             print("bedrock[lat_node]", bedrock_lat_node)
                             print("bedrock percent", br_percent)
-                            print("soil percent", s_percent)
-                            # print(frog)
-                        petlat_br = -Kl[i] * da[i] * max_slopes[i] * inv_rad_curv *br_percent
-                        print("petlat br", petlat_br)
-                        print(frog)
-                        petlat = -Kl[i] * da[i] * max_slopes[i] * inv_rad_curv
+                            print("soil percent", sed_percent)
+                            print("petlat br", petlat_br)
+                            print("petlat sed", petlat_sed)
+                            petlat = petlat_br + petlat_sed
+                            print("total petlat", petlat)
+    
+                            print(frog)
 
                         # the calculated potential lateral erosion is mutiplied by the length of the node
                         # and the bank height, then added to an array, vol_lat_dt, for volume eroded
