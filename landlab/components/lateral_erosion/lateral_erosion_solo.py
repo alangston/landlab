@@ -358,7 +358,7 @@ class LateralEroderSolo(Component):
                 self._dzlat_ts = grid.add_zeros("dzlat_ts", at="node")
 
         # below is from threshold valley widen
-        if "lateral_erosion__depth_increment" in grid.at_node:
+        if "lateral_erosion__depth_cumu" in grid.at_node:
             self._dzlat_cumu = grid.at_node["lateral_erosion__depth_cumu"]
         else:
             self._dzlat_cumu = grid.add_zeros("lateral_erosion__depth_cumu", at="node")
@@ -475,6 +475,8 @@ class LateralEroderSolo(Component):
                         sed_percent = soil_lat_node/z_lat_node
                         petlat_br = -Kl[i] * da[i] * max_slopes[i] * inv_rad_curv *br_percent
                         petlat_sed = -K_sed * da[i] * max_slopes[i] * inv_rad_curv *sed_percent
+                        petlat = petlat_br + petlat_sed
+
                         debug9 = 0
                         if debug9:
                             print(" ")
@@ -485,9 +487,7 @@ class LateralEroderSolo(Component):
                             print("soil percent", sed_percent)
                             print("petlat br", petlat_br)
                             print("petlat sed", petlat_sed)
-                            petlat = petlat_br + petlat_sed
                             print("total petlat", petlat)
-    
                             print(frog)
 
                         # the calculated potential lateral erosion is mutiplied by the length of the node
