@@ -464,7 +464,27 @@ class LateralEroderSolo(Component):
                     # if the elevation of the lateral node is higher than primary node,
                     # calculate a new potential lateral erosion (L/T), which is negative
                     if z[lat_node] > z[i]:
+                        # AL 10Jan2023: below starting to determine percent of lateral node height
+                        # above primary node height that is sediment vs. bedrock.
+                        z_lat_node = z[lat_node] - z[i]
+                        soil_lat_node = grid.at_node["soil__depth"][i]
+                        bedrock_lat_node = z_lat_node - soil_lat_node
+                        br_percent = bedrock_lat_node/z_lat_node
+                        s_percent = soil_lat_node/z_lat_node
+                        debug9 = 1
+                        if debug9:
+                            print(" ")
+                            print("z[lat_node]", z_lat_node)
+                            print("soi[lat_node]", soil_lat_node)
+                            print("bedrock[lat_node]", bedrock_lat_node)
+                            print("bedrock percent", br_percent)
+                            print("soil percent", s_percent)
+                            # print(frog)
+                        petlat_br = -Kl[i] * da[i] * max_slopes[i] * inv_rad_curv *br_percent
+                        print("petlat br", petlat_br)
+                        print(frog)
                         petlat = -Kl[i] * da[i] * max_slopes[i] * inv_rad_curv
+
                         # the calculated potential lateral erosion is mutiplied by the length of the node
                         # and the bank height, then added to an array, vol_lat_dt, for volume eroded
                         # laterally  *per timestep* at each node. This vol_lat_dt is reset to zero for
