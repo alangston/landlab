@@ -966,6 +966,7 @@ class SedDepEroder(Component):
 							*** September 29, 2022: this is a major hack that needs to be addressed.
 							It worked for CSDMS because I guess I had to do something to suppress
 							giant mounds of sediment forming. 
+							On second thought, looking at the code, this probably didn't create mounds of sediment, it probably created channels that were just flat going downstream because of all the extra sediment created by the lateral erosion.
                             """
                             dz_here = 0.
 #                            print("vol_dropped", vol_dropped)
@@ -998,6 +999,9 @@ class SedDepEroder(Component):
                             # do we need to retain a small downhill slope?
                             # ...don't think so. Will resolve itself on next
                             # timestep.
+                            """
+                            AL: october 4, 2022: about Dan's comment above, do we need to retain a small downhillslope? I think perhaps we do need a downhill slope. I did this in the original lateral erosion module. I copied it from what Greg did in CHILD.
+                            """
 
                         dz[i] -= dz_here
                         #below is where sed_int_node is updated

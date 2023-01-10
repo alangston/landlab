@@ -214,6 +214,8 @@ class ValleyWiden(Component):
         """
         trying this to fix hole digging because of qsin = nan because depth 
         at node = nan because of Dan's sneakiness! in sed flux dependent.
+		Octrober 4, 2022: Dan's sneakiness is on line 1155 where he calculates H. If slope is 0, H is 0, and then qsin is zero if H is zero.  <-- but I can't find the line where qs_in or sed flux is calculated wtih H in Dan's code.
+		Ah, it doesn't matter. I just change channel depths that are nans into zeros
         """
         depth_at_node = self._grid.at_node["channel__depth"]
 
@@ -270,7 +272,9 @@ class ValleyWiden(Component):
         max_slopes[:] = max_slopes.clip(0)
         new_transport_capacities = calc_new_transport_capacities(self, grid, Dchar)
         grid.at_node["channel_sediment__volumetric_transport_capacity"] = new_transport_capacities
+        """
         #ALL***: below is only for finding the lateral node
+        """
         for i in dwnst_nodes:
             # potential lateral erosion initially set to 0
             petlat = 0.0
