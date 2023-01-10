@@ -382,7 +382,7 @@ class LateralEroderSolo(Component):
         self._alph = alph
         self._K_br = K_br  # can be overwritten with spatially variable
         self._Klr = float(Kl_ratio)  # default ratio of K_br/Kl is 1. Can be overwritten
-        self._K_sed = K_sed
+        self._K_sed = K_sed * self._Klr  # 10jan2023: here K_sed is multiplied by the Kv/Kl ratio, same as K_br
 
         # handling K_br for floats (inwhich case it populates an array N_nodes long) or
         # for arrays of K_br. Checks that length of K_br array is good.
@@ -402,7 +402,6 @@ class LateralEroderSolo(Component):
         TB = self._TB
         K_br = self._K_br
         K_sed = self._K_sed
-
         qs_in = self._qs_in
         qs = self._qs
         alph = self._alph
