@@ -59,12 +59,9 @@ components folder.
 
 NOTE TO DEJH: This is missing some names; see, e.g., gFlex.
 """
-
-import dircache
+import contextlib
 import fnmatch
-import glob
 import os.path as path
-import pkgutil
 from copy import copy
 from os import walk
 
@@ -74,7 +71,7 @@ terminate_chars_map = {"[": "]", "{": "}", "(": ")"}
 
 abspath = path.abspath(comp.__path__[0])
 poss_comp_files = []
-for root, dirnames, filenames in walk(abspath):
+for root, _, filenames in walk(abspath):
     for filename in fnmatch.filter(filenames, "*.py"):
         poss_comp_files.append(path.join(root, filename))
 
@@ -112,7 +109,7 @@ for LLcomp in poss_comp_files:
     for prop in props_to_strip_list:
         lines_captured = []
         start_write = False
-        with open(LLcomp, "r") as inFile:
+        with open(LLcomp) as inFile:
             for line in inFile:
                 if prop in line:
                     accumulated_props.add(prop)
@@ -141,7 +138,7 @@ for LLcomp in poss_comp_files:
         if cat_lines and found_a_name:
             # print('EXEC: ', LLcomp)
             exec(cat_lines)  # eval(prop) is now an obj
-            if prop is " _name":
+            if prop == " _name":
                 last_name = eval(prop.lstrip())
                 comp_elements[eval(prop.lstrip())] = {}
             else:
@@ -153,7 +150,7 @@ for LLcomp in poss_comp_files:
             bad_components[LLcomp] = "No class is present in file."
 
 for badcomp in bad_components.keys():
-    with open(badcomp, "r") as inFile:
+    with open(badcomp) as inFile:
         noclass = True
         for line in inFile:
             if "class " in line:
@@ -178,14 +175,10 @@ for badcomp in bad_components.keys():
 all_field_names = set()
 for name in comp_elements.keys():
     this_un = comp_elements[name]
-    try:
+    with contextlib.suppress(TypeError, KeyError):
         all_field_names = all_field_names | this_un["_input_var_names"]
-    except (TypeError, KeyError):
-        pass  # this will get captured in problematic_components
-    try:
+    with contextlib.suppress(TypeError, KeyError):
         all_field_names = all_field_names | this_un["_output_var_names"]
-    except (TypeError, KeyError):
-        pass  # ditto
 
 for name in comp_elements.keys():
     problems = []
@@ -199,14 +192,15 @@ for name in comp_elements.keys():
         all_fields_here = all_fields_here | this_un["_output_var_names"]
     except (TypeError, KeyError):
         all_fields_here = set()
-    if type(name) != str:
+    if not isinstance(name, str):
         problems.append("The _name " + str(name) + " is not a string.")
     for prop in this_un:
-        if prop in ("_input_var_names", "_output_var_names"):
-            if type(this_un[prop]) != set:
-                problems.append(prop + " is not a set. It should be.")
+        if prop in ("_input_var_names", "_output_var_names") and not isinstance(
+            this_un[prop], set
+        ):
+            problems.append(prop + " is not a set. It should be.")
         if prop in ("_var_units", "_var_mapping", "_var_doc"):
-            if type(this_un[prop]) != dict:
+            if not isinstance(this_un[prop], dict):
                 problems.append(prop + " is not a dict. It should be.")
             elif all_fields_here and not set(this_un[prop].keys()).issubset(
                 all_fields_here
@@ -218,9 +212,9 @@ for name in comp_elements.keys():
                     + "defined in _input/_output_var_names"
                 )
             else:
-                if prop is "_var_mapping":
+                if prop == "_var_mapping":
                     for element in this_un[prop].values():
-                        if not (element in poss_elements):
+                        if element not in poss_elements:
                             problems.append(
                                 str(element)
                                 + " is not a "
@@ -249,7 +243,7 @@ for name in comp_elements.keys():
             problematic_components[name] = copy(problems)
 
 # final formatting change to problematic_components:
-for (key, vals) in problematic_components.items():
+for key, vals in problematic_components.items():
     if len(vals) == 0:
         problematic_components.pop(key)
     elif type(vals) is dict:

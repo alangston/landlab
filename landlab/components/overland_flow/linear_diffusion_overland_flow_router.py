@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Landlab component for overland flow using the linearized diffusion-wave approximation.
 
 Created on Fri May 27 14:26:13 2016
@@ -62,7 +61,7 @@ class LinearDiffusionOverlandFlowRouter(Component):
     --------
     >>> from landlab import RasterModelGrid
     >>> grid = RasterModelGrid((3, 3))
-    >>> _ = grid.add_zeros('topographic__elevation', at='node')
+    >>> _ = grid.add_zeros("topographic__elevation", at="node")
     >>> olf = LinearDiffusionOverlandFlowRouter(grid, roughness=0.1)
     >>> round(olf.vel_coef)
     100
@@ -70,7 +69,7 @@ class LinearDiffusionOverlandFlowRouter(Component):
     1e-05
     >>> olf.rain_rate = 1.0e-4
     >>> olf.run_one_step(dt=10.0)
-    >>> grid.at_node['surface_water__depth'][4]
+    >>> grid.at_node["surface_water__depth"][4]
     0.001
 
     References
@@ -138,6 +137,14 @@ class LinearDiffusionOverlandFlowRouter(Component):
             "mapping": "link",
             "doc": "Downstream gradient of the water surface.",
         },
+        "water_surface__elevation": {
+            "dtype": float,
+            "intent": "out",
+            "optional": False,
+            "units": "m",
+            "mapping": "node",
+            "doc": "Elevation of the water surface.",
+        },
     }
 
     def __init__(
@@ -203,8 +210,7 @@ class LinearDiffusionOverlandFlowRouter(Component):
         self._vel = grid.at_link["water__velocity"]
         self._disch = grid.at_link["water__specific_discharge"]
         self._wsgrad = grid.at_link["water_surface__gradient"]
-
-        self._water_surf_elev = np.zeros(grid.number_of_nodes)
+        self._water_surf_elev = grid.at_node["water_surface__elevation"]
 
         self._inactive_links = grid.status_at_link == grid.BC_LINK_IS_INACTIVE
 

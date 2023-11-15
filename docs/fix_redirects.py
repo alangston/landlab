@@ -1,14 +1,13 @@
 # fix redirects
-import os
-
 import fileinput
+import os
 
 _SRC = "source"
 
-with open("build/linkcheck/output.txt", "r") as f:
+with open("build/linkcheck/output.txt") as f:
     link_out = f.readlines()
 
-#%%
+
 for link in link_out:
     if "redirected" in link:
         file_name = os.path.join(_SRC, link.split(":")[0])
