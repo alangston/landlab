@@ -6,6 +6,7 @@ Do NOT add new documentation here. Grid documentation is now built in a
 semi- automated fashion. To modify the text seen on the web, edit the
 files `docs/text_for_[gridfile].py.txt`.
 """
+import contextlib
 
 import numpy as np
 import xarray as xr
@@ -61,39 +62,6 @@ def _node_has_boundary_neighbor(mg, id, method="d8"):
 _node_has_boundary_neighbor = np.vectorize(_node_has_boundary_neighbor, excluded=["mg"])
 
 
-class RasterModelGridPlotter(object):
-
-    """MixIn that provides plotting functionality.
-
-    Inhert from this class to provide a ModelDataFields object with the
-    method function, ``imshow``, that plots a data field.
-    """
-
-    def imshow(self, group, var_name, **kwds):
-        """Plot a data field.
-
-        This is a wrapper for `plot.imshow_grid`, and can take the same
-        keywords. See that function for full documentation.
-
-        Parameters
-        ----------
-        group : str
-            Name of group.
-        var_name : str
-            Name of field
-
-        See Also
-        --------
-        landlab.plot.imshow_grid
-
-        LLCATS: GINF
-        """
-        from landlab.plot import imshow_grid
-
-        kwds["values_at"] = group
-        imshow_grid(self, var_name, **kwds)
-
-
 def grid_edge_is_closed_from_dict(boundary_conditions):
     """Get a list of closed-boundary status at grid edges.
 
@@ -119,7 +87,7 @@ def grid_edge_is_closed_from_dict(boundary_conditions):
     Examples
     --------
     >>> from landlab.grid.raster import grid_edge_is_closed_from_dict
-    >>> grid_edge_is_closed_from_dict(dict(bottom='closed', top='open'))
+    >>> grid_edge_is_closed_from_dict(dict(bottom="closed", top="open"))
     [False, False, False, True]
     >>> grid_edge_is_closed_from_dict({})
     [False, False, False, False]
@@ -134,9 +102,7 @@ def grid_edge_is_closed_from_dict(boundary_conditions):
     ]
 
 
-class RasterModelGrid(
-    DiagonalsMixIn, DualUniformRectilinearGraph, ModelGrid, RasterModelGridPlotter
-):
+class RasterModelGrid(DiagonalsMixIn, DualUniformRectilinearGraph, ModelGrid):
 
     """A 2D uniform rectilinear grid.
 
@@ -156,7 +122,7 @@ class RasterModelGrid(
     Set the nodes along the top edge of the grid to be *closed* boundaries.
     This means that any links touching these nodes will be *inactive*.
 
-    >>> rmg = RasterModelGrid((4, 5), bc={'top': 'closed'})
+    >>> rmg = RasterModelGrid((4, 5), bc={"top": "closed"})
     >>> rmg.number_of_node_rows, rmg.number_of_node_columns
     (4, 5)
     >>> rmg.number_of_active_links
@@ -168,16 +134,16 @@ class RasterModelGrid(
     >>> grid = RasterModelGrid((4, 5), xy_spacing=(2, 1))
     >>> grid.dx, grid.dy
     (2.0, 1.0)
-    >>> grid.node_y # doctest: +NORMALIZE_WHITESPACE
-    array([ 0., 0., 0., 0., 0.,
-            1., 1., 1., 1., 1.,
-            2., 2., 2., 2., 2.,
-            3., 3., 3., 3., 3.])
-    >>> grid.node_x # doctest: +NORMALIZE_WHITESPACE
-    array([ 0., 2., 4., 6., 8.,
-            0., 2., 4., 6., 8.,
-            0., 2., 4., 6., 8.,
-            0., 2., 4., 6., 8.])
+    >>> grid.node_y.reshape(grid.shape)
+    array([[ 0.,  0.,  0.,  0.,  0.],
+           [ 1.,  1.,  1.,  1.,  1.],
+           [ 2.,  2.,  2.,  2.,  2.],
+           [ 3.,  3.,  3.,  3.,  3.]])
+    >>> grid.node_x.reshape(grid.shape)
+    array([[ 0.,  2.,  4.,  6.,  8.],
+           [ 0.,  2.,  4.,  6.,  8.],
+           [ 0.,  2.,  4.,  6.,  8.],
+           [ 0.,  2.,  4.,  6.,  8.]])
     """
 
     def __init__(
@@ -267,7 +233,7 @@ class RasterModelGrid(
         self._looped_second_ring_cell_neighbor_list_created = False
 
     def __repr__(self):
-        return "RasterModelGrid({0}, xy_spacing={1}, xy_of_lower_left={2})".format(
+        return "RasterModelGrid({}, xy_spacing={}, xy_of_lower_left={})".format(
             repr(self.shape),
             repr((self.dx, self.dy)),
             repr((self.x_of_node.min(), self.y_of_node.min())),
@@ -276,7 +242,7 @@ class RasterModelGrid(
     def __setstate__(self, state_dict):
         """Set state for of RasterModelGrid from pickled state_dict."""
         if state_dict["type"] != "RasterModelGrid":
-            assert TypeError(("Saved model instance not of " "RasterModelGrid type."))
+            assert TypeError("Saved model instance not of " "RasterModelGrid type.")
 
         xy_spacing = state_dict["xy_spacing"]
         shape = state_dict["shape"]
@@ -311,17 +277,18 @@ class RasterModelGrid(
         state_dict = {}
 
         # save basic information about the shape and size of the grid
-        state_dict["type"] = "RasterModelGrid"
-        state_dict["xy_spacing"] = (self.dx, self.dy)
-        state_dict["shape"] = self.shape
-        state_dict["xy_of_lower_left"] = self.xy_of_lower_left
-        state_dict["xy_of_reference"] = self.xy_of_reference
-        state_dict["xy_axis_name"] = self.axis_name
-        state_dict["xy_axis_units"] = self.axis_units
-
-        # save status information at nodes (status at link set based on status
-        # at node
-        state_dict["status_at_node"] = np.asarray(self._node_status)
+        state_dict = {
+            "type": "RasterModelGrid",
+            "xy_spacing": (self.dx, self.dy),
+            "shape": self.shape,
+            "xy_of_lower_left": self.xy_of_lower_left,
+            "xy_of_reference": self.xy_of_reference,
+            "xy_axis_name": self.axis_name,
+            "xy_axis_units": self.axis_units,
+            # save status information at nodes (status at link set based on status
+            # at node
+            "status_at_node": np.asarray(self._node_status),
+        }
 
         groups = {}
         for at in ("node", "link", "patch", "corner", "face", "cell", "grid"):
@@ -353,12 +320,11 @@ class RasterModelGrid(
         Examples
         --------
         >>> from landlab import RasterModelGrid
-        >>> grid = RasterModelGrid.from_dict(
-        ...     {'shape': (3, 4), 'bc': {'top': 'closed'}})
+        >>> grid = RasterModelGrid.from_dict({"shape": (3, 4), "bc": {"top": "closed"}})
         >>> grid.number_of_nodes
         12
 
-        LLCATS: GINF
+        :meta landlab: info-grid
         """
         shape = params.pop("shape", None)
         return cls(shape, **params)
@@ -381,9 +347,7 @@ class RasterModelGrid(
             attrs={"grid_type": "uniform_rectilinear"},
         )
         return dataset.update(
-            super(RasterModelGrid, self).as_dataset(
-                include=include, exclude=exclude, time=time
-            )
+            super().as_dataset(include=include, exclude=exclude, time=time)
         )
 
     @property
@@ -418,7 +382,7 @@ class RasterModelGrid(
         >>> grid.cell_grid_shape
         (1, 2)
 
-        LLCATS: GINF CINF
+        :meta landlab: info-grid, info-cell
         """
         return (self.number_of_cell_rows, self.number_of_cell_columns)
 
@@ -465,13 +429,13 @@ class RasterModelGrid(
         rows (only one vertical link).
 
         >>> from landlab import RasterModelGrid
-        >>> mg = RasterModelGrid((3, 4), xy_spacing=(2., 2.))
+        >>> mg = RasterModelGrid((3, 4), xy_spacing=(2.0, 2.0))
 
-        >>> mg.unit_vector_at_link[:, 0] # doctest: +NORMALIZE_WHITESPACE
+        >>> mg.unit_vector_at_link[:, 0]
         array([ 1.,  1.,  1.,  0.,  0.,  0.,  0.,
                 1.,  1.,  1.,  0.,  0.,  0.,  0.,
                 1.,  1.,  1.])
-        >>> mg.unit_vector_at_link[:, 1] # doctest: +NORMALIZE_WHITESPACE
+        >>> mg.unit_vector_at_link[:, 1]
         array([ 0.,  0.,  0.,  1.,  1.,  1.,  1.,
                 0.,  0.,  0.,  1.,  1.,  1.,  1.,
                 0.,  0.,  0.])
@@ -509,7 +473,7 @@ class RasterModelGrid(
         >>> grid.extent
         (3.0, 4.0)
 
-        >>> grid = RasterModelGrid((4, 5), xy_spacing=2.)
+        >>> grid = RasterModelGrid((4, 5), xy_spacing=2.0)
         >>> grid.extent
         (6.0, 8.0)
 
@@ -517,7 +481,7 @@ class RasterModelGrid(
         >>> grid.extent
         (6.0, 12.0)
 
-        LLCATS: GINF MEAS
+        :meta landlab: info-grid, quantity
         """
         # Method added 5/1/13 by DEJH, modified DEJH 4/3/14 to reflect fact
         # boundary nodes don't have defined
@@ -540,7 +504,7 @@ class RasterModelGrid(
         >>> grid.number_of_interior_nodes
         6
 
-        LLCATS: NINF
+        :meta landlab: info-node
         """
         return sgrid.interior_node_count(self.shape)
 
@@ -557,7 +521,7 @@ class RasterModelGrid(
         >>> grid.number_of_cell_columns
         3
 
-        LLCATS: GINF NINF
+        :meta landlab: info-grid, info-node
         """
         return self.shape[1] - 2
 
@@ -574,7 +538,7 @@ class RasterModelGrid(
         >>> grid.number_of_cell_rows
         2
 
-        LLCATS: GINF CINF
+        :meta landlab: info-grid, info-cell
         """
         return self.shape[0] - 2
 
@@ -596,7 +560,7 @@ class RasterModelGrid(
         >>> grid.cells_at_corners_of_grid
         array([0, 2, 3, 5])
 
-        LLCATS: GINF CINF SUBSET
+        :meta landlab: info-grid, info-cell, subset
         """
         return sgrid.corners(self.cell_grid_shape)
 
@@ -628,12 +592,15 @@ class RasterModelGrid(
         >>> grid = RasterModelGrid((4, 5), xy_spacing=(1, 2))
         >>> grid.is_point_on_grid(1, 1)
         True
-        >>> grid.is_point_on_grid((1, 1, 1,), (1, 3.1, 6.1))
+        >>> grid.is_point_on_grid(
+        ...     (1, 1, 1),
+        ...     (1, 3.1, 6.1),
+        ... )
         array([ True,  True, False], dtype=bool)
-        >>> grid.is_point_on_grid((-.1, .1, 3.9, 4.1), (1, 1, 1, 1))
+        >>> grid.is_point_on_grid((-0.1, 0.1, 3.9, 4.1), (1, 1, 1, 1))
         array([False,  True,  True, False], dtype=bool)
 
-        LLCATS: GINF MEAS SUBSET
+        :meta landlab: info-grid, quantity, subset
         """
         xcoord, ycoord = np.asarray(xcoord), np.asarray(ycoord)
 
@@ -683,23 +650,23 @@ class RasterModelGrid(
         --------
         >>> from landlab import RasterModelGrid
         >>> grid = RasterModelGrid((3, 4))
-        >>> grid.nodes_around_point(.4, 1.2)
+        >>> grid.nodes_around_point(0.4, 1.2)
         array([4, 8, 9, 5])
 
-        >>> grid.nodes_around_point([.9, 1.1], 1.2)
+        >>> grid.nodes_around_point([0.9, 1.1], 1.2)
         array([[ 4,  5],
                [ 8,  9],
                [ 9, 10],
                [ 5,  6]])
 
         >>> grid = RasterModelGrid((3, 4), xy_spacing=(1, 2))
-        >>> grid.nodes_around_point(.5, 1.5)
+        >>> grid.nodes_around_point(0.5, 1.5)
         array([0, 4, 5, 1])
         >>> grid = RasterModelGrid((3, 4))
-        >>> grid.nodes_around_point(.5, 1.5)
+        >>> grid.nodes_around_point(0.5, 1.5)
         array([4, 8, 9, 5])
 
-        LLCATS: NINF SUBSET
+        :meta landlab: info-node, subset
         """
         xcoord, ycoord = np.broadcast_arrays(xcoord, ycoord)
 
@@ -755,12 +722,12 @@ class RasterModelGrid(
         >>> rmg = RasterModelGrid((4, 5))
         >>> rmg.find_nearest_node([0.2, 0.2])
         0
-        >>> rmg.find_nearest_node((np.array([1.6, 3.6]), np.array([2.3, .7])))
+        >>> rmg.find_nearest_node((np.array([1.6, 3.6]), np.array([2.3, 0.7])))
         array([12,  9])
-        >>> rmg.find_nearest_node((-.4999, 1.))
+        >>> rmg.find_nearest_node((-0.4999, 1.0))
         5
 
-        LLCATS: NINF SUBSET
+        :meta landlab: info-node, subset
         """
         return rfuncs.find_nearest_node(self, coords, mode=mode)
 
@@ -823,20 +790,24 @@ class RasterModelGrid(
         and all boundary nodes coded as BC_NODE_IS_FIXED_VALUE (=1):
 
         >>> from landlab import RasterModelGrid
-        >>> rmg = RasterModelGrid((4, 5)) # rows, columns, spacing
+        >>> rmg = RasterModelGrid((4, 5))  # rows, columns, spacing
         >>> rmg.number_of_active_links
         17
-        >>> rmg.status_at_node # doctest: +NORMALIZE_WHITESPACE
-        array([1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1],
-              dtype=uint8)
+        >>> rmg.status_at_node.reshape(rmg.shape)
+        array([[1, 1, 1, 1, 1],
+               [1, 0, 0, 0, 1],
+               [1, 0, 0, 0, 1],
+               [1, 1, 1, 1, 1]], dtype=uint8)
         >>> rmg.set_closed_boundaries_at_grid_edges(True, True, False, False)
         >>> rmg.number_of_active_links
         12
-        >>> rmg.status_at_node # doctest: +NORMALIZE_WHITESPACE
-        array([1, 1, 1, 1, 1, 1, 0, 0, 0, 4, 1, 0, 0, 0, 4, 4, 4, 4, 4, 4],
-              dtype=uint8)
+        >>> rmg.status_at_node.reshape(rmg.shape)
+        array([[1, 1, 1, 1, 1],
+               [1, 0, 0, 0, 4],
+               [1, 0, 0, 0, 4],
+               [4, 4, 4, 4, 4]], dtype=uint8)
 
-        LLCATS: BC SUBSET
+        :meta landlab: boundary-condition, subset
         """
         if bottom_is_closed:
             self._node_status[self.nodes_at_bottom_edge] = self.BC_NODE_IS_CLOSED
@@ -914,22 +885,21 @@ class RasterModelGrid(
         Put some arbitrary values in the grid fields:
 
         >>> import numpy as np
-        >>> rmg.at_node['topographic__elevation'] = np.random.rand(20)
+        >>> rmg.at_node["topographic__elevation"] = np.random.rand(20)
         >>> rmg.set_closed_boundaries_at_grid_edges(True, True, True, True)
-        >>> rmg.status_at_node # doctest: +NORMALIZE_WHITESPACE
-        array([4, 4, 4, 4, 4,
-               4, 0, 0, 0, 4,
-               4, 0, 0, 0, 4,
-               4, 4, 4, 4, 4], dtype=uint8)
-        >>> rmg.set_fixed_value_boundaries_at_grid_edges(
-        ...     True, True, False, False)
+        >>> rmg.status_at_node.reshape(rmg.shape)
+        array([[4, 4, 4, 4, 4],
+               [4, 0, 0, 0, 4],
+               [4, 0, 0, 0, 4],
+               [4, 4, 4, 4, 4]], dtype=uint8)
+        >>> rmg.set_fixed_value_boundaries_at_grid_edges(True, True, False, False)
         >>> rmg.number_of_active_links
         12
-        >>> rmg.status_at_node # doctest: +NORMALIZE_WHITESPACE
-        array([4, 4, 4, 4, 4,
-               4, 0, 0, 0, 1,
-               4, 0, 0, 0, 1,
-               1, 1, 1, 1, 1], dtype=uint8)
+        >>> rmg.status_at_node.reshape(rmg.shape)
+        array([[4, 4, 4, 4, 4],
+               [4, 0, 0, 0, 1],
+               [4, 0, 0, 0, 1],
+               [1, 1, 1, 1, 1]], dtype=uint8)
 
         Note that the four corners are treated as follows:
 
@@ -941,7 +911,7 @@ class RasterModelGrid(
         This scheme is necessary for internal consistency with looped
         boundaries.
 
-        LLCATS: BC SUBSET
+        :meta landlab: boundary-condition, subset
         """
         bottom_edge = range(0, self.number_of_node_columns)
         right_edge = range(
@@ -980,9 +950,9 @@ class RasterModelGrid(
         )
 
         if value:
-            if type(value) == float or type(value) == int:
+            if isinstance(value, (float, int)):
                 values_to_use = float(value)
-            elif type(value) == np.ndarray:
+            elif isinstance(value, np.ndarray):
                 if (
                     value.size
                     == self.fixed_value_node_properties["boundary_node_IDs"].size
@@ -1028,10 +998,8 @@ class RasterModelGrid(
         else:
             self.fixed_value_node_properties["internal_flag"] = True
             self.fixed_value_node_properties["fixed_value_of"] = value_of
-        try:
+        with contextlib.suppress(NameError):
             self.fixed_value_node_properties["values"] = values_to_use
-        except NameError:
-            pass  # the flag will catch this case
 
     def set_looped_boundaries(self, top_bottom_are_looped, sides_are_looped):
         """Create wrap-around boundaries.
@@ -1059,22 +1027,24 @@ class RasterModelGrid(
         Examples
         --------
         >>> from landlab import RasterModelGrid
-        >>> rmg = RasterModelGrid((4, 5)) # rows, columns, spacing
+        >>> rmg = RasterModelGrid((4, 5))  # rows, columns, spacing
         >>> rmg.number_of_active_links
         17
-        >>> rmg.status_at_node # doctest: +NORMALIZE_WHITESPACE
-        array([1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1],
-              dtype=uint8)
-        >>> rmg.add_zeros('topographic__elevation', at='node')
+        >>> rmg.status_at_node.reshape(rmg.shape)
+        array([[1, 1, 1, 1, 1],
+               [1, 0, 0, 0, 1],
+               [1, 0, 0, 0, 1],
+               [1, 1, 1, 1, 1]], dtype=uint8)
+        >>> rmg.add_zeros("topographic__elevation", at="node")
         array([ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
                 0.,  0.,  0.,  0.,  0.,  0.,  0.])
         >>> rmg.set_looped_boundaries(True, True)
-        >>> rmg.looped_node_properties['boundary_node_IDs']
+        >>> rmg.looped_node_properties["boundary_node_IDs"]
         array([ 0,  1,  2,  3,  4,  5,  9, 10, 14, 15, 16, 17, 18, 19])
-        >>> rmg.looped_node_properties['linked_node_IDs']
+        >>> rmg.looped_node_properties["linked_node_IDs"]
         array([10, 11, 12, 13, 14,  8,  6, 13, 11,  5,  6,  7,  8,  9])
 
-        LLCATS: BC SUBSET
+        :meta landlab: boundary-condition, subset
         """
         # Added DEJH Feb 2014
         # TODO: Assign BC_statuses also to *links*
@@ -1187,9 +1157,9 @@ class RasterModelGrid(
         --------
         >>> from landlab import RasterModelGrid
         >>> rmg = RasterModelGrid((4, 5))
-        >>> u = rmg.zeros(centering='node')
+        >>> u = rmg.zeros(centering="node")
         >>> u = u + range(0, len(u))
-        >>> u # doctest: +NORMALIZE_WHITESPACE
+        >>> u
         array([ 0.,   1.,   2.,   3.,   4.,   5.,   6.,   7.,   8.,   9.,  10.,
                11.,  12.,  13.,  14.,  15.,  16.,  17.,  18.,  19.])
         >>> ur = rmg.node_vector_to_raster(u)
@@ -1205,7 +1175,7 @@ class RasterModelGrid(
                [  5.,   6.,   7.,   8.,   9.],
                [  0.,   1.,   2.,   3.,   4.]])
 
-        LLCATS: GINF NINF
+        :meta landlab: info-grid, info-node
         """
         return sgrid.reshape_array(self.shape, u, flip_vertically=flip_vertically)
 
@@ -1224,7 +1194,7 @@ class RasterModelGrid(
         --------
         >>> from landlab import RasterModelGrid
         >>> rmg = RasterModelGrid((4, 5))
-        >>> u = rmg.zeros(centering='cell')
+        >>> u = rmg.zeros(centering="cell")
         >>> u = u + range(0, len(u))
         >>> u
         array([ 0.,  1.,  2.,  3.,  4.,  5.])
@@ -1237,7 +1207,7 @@ class RasterModelGrid(
         array([[ 3.,  4.,  5.],
                [ 0.,  1.,  2.]])
 
-        LLCATS: GINF CINF
+        :meta landlab: info-grid, info-cell
         """
         return sgrid.reshape_array(
             (self.shape[0] - 2, self.shape[1] - 2), u, flip_vertically=flip_vertically
@@ -1266,22 +1236,28 @@ class RasterModelGrid(
         --------
         >>> from landlab import RasterModelGrid
         >>> rmg = RasterModelGrid((4, 3))
-        >>> data = rmg.add_zeros('test_data', at='node')
+        >>> data = rmg.add_zeros("test_data", at="node")
         >>> data[:] = np.arange(12)
-        >>> rmg.roll_nodes_ud('test_data', 1)
-        >>> data # doctest: +NORMALIZE_WHITESPACE
-        array([ 9.,  10.,  11.,   0.,   1.,   2.,   3.,   4.,   5.,   6.,   7.,
-                8.])
-        >>> rmg.roll_nodes_ud('test_data', 2)
-        >>> data # doctest: +NORMALIZE_WHITESPACE
-        array([ 3.,   4.,   5.,   6.,   7.,   8.,   9.,  10.,  11.,   0.,   1.,
-                2.])
-        >>> rmg.roll_nodes_ud('test_data', 1, interior_only=True)
-        >>> data # doctest: +NORMALIZE_WHITESPACE
-        array([ 3.,   1.,   5.,   6.,   4.,   8.,   9.,   7.,  11.,   0.,  10.,
-                2.])
+        >>> rmg.roll_nodes_ud("test_data", 1)
+        >>> data.reshape(rmg.shape)
+        array([[  9.,  10.,  11.],
+               [  0.,   1.,   2.],
+               [  3.,   4.,   5.],
+               [  6.,   7.,   8.]])
+        >>> rmg.roll_nodes_ud("test_data", 2)
+        >>> data.reshape(rmg.shape)
+        array([[  3.,   4.,   5.],
+               [  6.,   7.,   8.],
+               [  9.,  10.,  11.],
+               [  0.,   1.,   2.]])
+        >>> rmg.roll_nodes_ud("test_data", 1, interior_only=True)
+        >>> data.reshape(rmg.shape)
+        array([[  3.,   1.,   5.],
+               [  6.,   4.,   8.],
+               [  9.,   7.,  11.],
+               [  0.,  10.,   2.]])
 
-        LLCATS: NINF
+        :meta landlab: info-node
         """
         # Get the data
         data = self.at_node[data_name]
@@ -1341,7 +1317,7 @@ class RasterModelGrid(
             ...
         IndexError: index 25 is out of bounds for axis 0 with size 25
 
-        LLCATS: NINF CONN BC
+        :meta landlab: info-node, connectivity, boundary-condition
         """
         ans = _node_has_boundary_neighbor(self, ids, method=method)
 
@@ -1392,7 +1368,7 @@ class RasterModelGrid(
         >>> mg.grid_coords_to_node_id([2, 0], [3, 4])
         array([13,  4])
 
-        LLCATS: NINF SUBSET MEAS
+        :meta landlab: info-node, subset, quantity
         """
         return np.ravel_multi_index((row, col), self.shape, **kwds)
 
@@ -1403,7 +1379,7 @@ class RasterModelGrid(
         normal for a square patch. Use
         `_calc_unit_normals_to_patch_subtriangles` instead.
 
-        LLCATS: PINF GRAD
+        :meta landlab: info-patch, gradient
         """
         raise NotImplementedError(
             "This method is not defined on a raster, as there is no unique "
@@ -1442,9 +1418,7 @@ class RasterModelGrid(
         >>> import numpy as np
         >>> from landlab import RasterModelGrid
         >>> grid = RasterModelGrid((3, 4), xy_spacing=(4, 4))
-        >>> z = np.array([0., 0., 0., 0.,
-        ...               3., 3., 3., 3,
-        ...               6., 6., 6., 6.])
+        >>> z = np.array([0.0, 0.0, 0.0, 0.0, 3.0, 3.0, 3.0, 3, 6.0, 6.0, 6.0, 6.0])
         >>> slope, aspect = grid.calculate_slope_aspect_at_nodes_burrough(vals=z)
         >>> np.tan(slope)
         array([ 0.75,  0.75])
@@ -1465,7 +1439,7 @@ class RasterModelGrid(
         >>> grid.calc_aspect_at_node(elevs=z)[grid.core_nodes]
         array([ 180.,  180.])
 
-        LLCATS: NINF SURF GRAD
+        :meta landlab: info-node, surface, gradient
         """
         if ids is None:
             ids = self.node_at_cell
@@ -1543,7 +1517,7 @@ class RasterModelGrid(
         True
         >>> os.remove(fname)
 
-        LLCATS: GINF
+        :meta landlab: info-grid
         """
         from ..io import write_esri_ascii
         from ..io.netcdf import write_netcdf
@@ -1589,7 +1563,7 @@ class RasterModelGrid(
         array([[2, 5, 4, 3, 0, 3, 4, 5],
                [3, 0, 2, 1, 4, 1, 2, 0]])
 
-        LLCATS: DEPR CINF CONN BC
+        :meta landlab: deprecated, info-cell, connectivity, boundary-condition
         """
         if self._looped_cell_neighbor_list is not None:
             return self._looped_cell_neighbor_list
@@ -1756,17 +1730,18 @@ class RasterModelGrid(
         >>> mg.second_ring_looped_neighbors_at_cell[8, :]
         array([10, 18, 26, 25, 24, 31, 30, 22, 14,  6, 62, 63, 56, 57, 58,  2])
 
-        ...take a look at the cell grid to understand why:
-        [56, 57, 58, 59, 60, 61, 62, 63]
-        [48, 49, 50, 51, 52, 53, 54, 55]
-        [40, 41, 42, 43, 44, 45, 46, 47]
-        [32, 33, 34, 35, 36, 37, 38, 39]
-        [24, 25, 26, 27, 28, 29, 30, 31]
-        [16, 17, 18, 19, 20, 21, 22, 23]
-        [ 8,  9, 10, 11, 12, 13, 14, 15]
-        [ 0,  1,  2,  3,  4,  5,  6,  7]
+        ...take a look at the cell grid to understand why::
 
-        LLCATS: CINF CONN BC
+            [56, 57, 58, 59, 60, 61, 62, 63]
+            [48, 49, 50, 51, 52, 53, 54, 55]
+            [40, 41, 42, 43, 44, 45, 46, 47]
+            [32, 33, 34, 35, 36, 37, 38, 39]
+            [24, 25, 26, 27, 28, 29, 30, 31]
+            [16, 17, 18, 19, 20, 21, 22, 23]
+            [ 8,  9, 10, 11, 12, 13, 14, 15]
+            [ 0,  1,  2,  3,  4,  5,  6,  7]
+
+        :meta landlab: info-cell, connectivity, boundary-condition
         """
         if self._looped_second_ring_cell_neighbor_list_created:
             return self.second_ring_looped_cell_neighbor_list
@@ -1883,8 +1858,9 @@ class RasterModelGrid(
 
         Examples
         --------
+
         The first example will use a 4,4 grid with node data values
-        as illustrated:
+        as illustrated::
 
             -9999. -9999. -9999. -9999.
             -9999.    67.     0. -9999.
@@ -1901,43 +1877,52 @@ class RasterModelGrid(
 
         >>> import numpy as np
         >>> from landlab import RasterModelGrid
-        >>> rmg = RasterModelGrid((4,4))
-        >>> node_data = np.array([-9999., -9999., -9999., -9999.,
-        ...                      -9999.,    67.,    67., -9999.,
-        ...                      -9999.,    67.,     0., -9999.,
-        ...                      -9999., -9999., -9999., -9999.])
-        >>> out_id = rmg.set_watershed_boundary_condition(node_data, -9999.,
-        ...                                              True)
+        >>> rmg = RasterModelGrid((4, 4))
+        >>> node_data = np.array(
+        ...     [
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0],
+        ...         [-9999.0, 67.0, 67.0, -9999.0],
+        ...         [-9999.0, 67.0, 0.0, -9999.0],
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0],
+        ...     ]
+        ... ).flatten()
+        >>> out_id = rmg.set_watershed_boundary_condition(node_data, -9999.0, True)
         >>> out_id
         array([10])
         >>> rmg.status_at_node
         array([4, 4, 4, 4, 4, 0, 0, 4, 4, 0, 1, 4, 4, 4, 4, 4], dtype=uint8)
-        >>> rmg2 = RasterModelGrid((4,4))
-        >>> node_data2 = np.array([-9999., -9999., -9999., -9999.,
-        ...                      -9999.,    67.,    67.,    -2.,
-        ...                      -9999.,    67.,     0., -9999.,
-        ...                      -9999., -9999., -9999., -9999.])
-        >>> rmg2.set_watershed_boundary_condition(node_data2, -9999.)
+        >>> rmg2 = RasterModelGrid((4, 4))
+        >>> node_data2 = np.array(
+        ...     [
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0],
+        ...         [-9999.0, 67.0, 67.0, -2.0],
+        ...         [-9999.0, 67.0, 0.0, -9999.0],
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0],
+        ...     ]
+        ... ).flatten()
+        >>> rmg2.set_watershed_boundary_condition(node_data2, -9999.0)
         >>> rmg2.status_at_node
         array([4, 4, 4, 4, 4, 0, 0, 1, 4, 0, 0, 4, 4, 4, 4, 4], dtype=uint8)
 
         The node data can also be provided as a model grid field.
 
-        >>> rmg = RasterModelGrid((4,4))
-        >>> node_data = np.array([-9999., -9999., -9999., -9999.,
-        ...                      -9999.,    67.,    67., -9999.,
-        ...                      -9999.,    67.,     0., -9999.,
-        ...                      -9999., -9999., -9999., -9999.])
+        >>> rmg = RasterModelGrid((4, 4))
+        >>> node_data = [
+        ...     [-9999.0, -9999.0, -9999.0, -9999.0],
+        ...     [-9999.0, 67.0, 67.0, -9999.0],
+        ...     [-9999.0, 67.0, 0.0, -9999.0],
+        ...     [-9999.0, -9999.0, -9999.0, -9999.0],
+        ... ]
         >>> _ = rmg.add_field("topographic__elevation", node_data, at="node")
-        >>> out_id = rmg.set_watershed_boundary_condition('topographic__elevation',
-        ...                                               -9999.,
-        ...                                               True)
+        >>> out_id = rmg.set_watershed_boundary_condition(
+        ...     "topographic__elevation", -9999.0, True
+        ... )
         >>> out_id
         array([10])
         >>> rmg.status_at_node
         array([4, 4, 4, 4, 4, 0, 0, 4, 4, 0, 1, 4, 4, 4, 4, 4], dtype=uint8)
 
-        LLCATS: BC
+        :meta landlab: boundary-condition
         """
         # get node_data if a field name
         node_data = self.return_array_or_field_values("node", node_data)
@@ -1997,14 +1982,12 @@ class RasterModelGrid(
                 if sum(next_to_boundary) > 1:
                     potential_locs = min_locs[np.where(np.asarray(next_to_boundary))[0]]
                     raise ValueError(
-                        (
-                            "Grid has two potential outlet nodes."
-                            "They have the following node IDs: \n"
-                            + str(potential_locs)
-                            + "\nUse the method set_watershed_boundary_condition_outlet_id "
-                            "to explicitly select one of these "
-                            "IDs as the outlet node."
-                        )
+                        "Grid has two potential outlet nodes."
+                        "They have the following node IDs: \n"
+                        + str(potential_locs)
+                        + "\nUse the method set_watershed_boundary_condition_outlet_id "
+                        "to explicitly select one of these "
+                        "IDs as the outlet node."
                     )
                 else:
                     outlet_loc = min_locs[np.where(next_to_boundary)[0][0]]
@@ -2079,16 +2062,24 @@ class RasterModelGrid(
         --------
         >>> import numpy as np
         >>> from landlab import RasterModelGrid
-        >>> mg1 = RasterModelGrid((4,6))
-        >>> z1 = np.array([-9999., -9999., -9999.,  -9999., -9999., -9999.,
-        ...                -9999.,    67.,    67.,  -9999.,    50., -9999.,
-        ...                -9999.,    67.,     0.,  -9999., -9999., -9999.,
-        ...                -9999., -9999., -9999.,  -9999., -9999., -9999.])
-        >>> mg2 = RasterModelGrid((4,6))
-        >>> z2 = np.array([-9999., -9999., -9999.,  -9999., -9999., -9999.,
-        ...                -9999.,    67.,    67.,  -9999.,    50., -9999.,
-        ...                -9999.,    67.,     0.,  -9999., -9999., -9999.,
-        ...                -9999., -9999., -9999.,  -9999., -9999., -9999.])
+        >>> mg1 = RasterModelGrid((4, 6))
+        >>> z1 = np.array(
+        ...     [
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0, -9999.0, -9999.0],
+        ...         [-9999.0, 67.0, 67.0, -9999.0, 50.0, -9999.0],
+        ...         [-9999.0, 67.0, 0.0, -9999.0, -9999.0, -9999.0],
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0, -9999.0, -9999.0],
+        ...     ]
+        ... ).flatten()
+        >>> mg2 = RasterModelGrid((4, 6))
+        >>> z2 = np.array(
+        ...     [
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0, -9999.0, -9999.0],
+        ...         [-9999.0, 67.0, 67.0, -9999.0, 50.0, -9999.0],
+        ...         [-9999.0, 67.0, 0.0, -9999.0, -9999.0, -9999.0],
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0, -9999.0, -9999.0],
+        ...     ]
+        ... ).flatten()
         >>> mg1.set_watershed_boundary_condition(z1, remove_disconnected=True)
         >>> mg2.set_watershed_boundary_condition(z2)
         >>> mg2.status_at_node.reshape(mg2.shape)
@@ -2112,7 +2103,7 @@ class RasterModelGrid(
                [-9999.,    67.,     0., -9999., -9999., -9999.],
                [-9999., -9999., -9999., -9999., -9999., -9999.]])
 
-        LLCATS: BC
+        :meta landlab: boundary-condition
         """
         # get node_data if a field name
         node_data = self.return_array_or_field_values("node", node_data)
@@ -2126,12 +2117,13 @@ class RasterModelGrid(
 
             if len(possible_outlets) > 1:
                 raise ValueError(
-                    "Model grid must only have one node with node status of BC_NODE_IS_FIXED_VALUE. This grid has %r"
-                    % len(possible_outlets)
+                    "Model grid must only have one node with node status of "
+                    f"BC_NODE_IS_FIXED_VALUE. This grid has {len(possible_outlets)}."
                 )
             if len(possible_outlets) < 1:
                 raise ValueError(
-                    "Model grid must only have one node with node status of BC_NODE_IS_FIXED_VALUE. This grid has none"
+                    "Model grid must only have one node with node status of "
+                    "BC_NODE_IS_FIXED_VALUE. This grid has none"
                 )
 
             outlet_id = possible_outlets
@@ -2163,7 +2155,6 @@ class RasterModelGrid(
 
         # continue running until no new nodes are added.
         while numAdded > 0:
-
             # find all potential new nodes by filtering the nodes connected to
             # the most recent set of new nodes based on their status.
             connected_orthogonal_nodes = self.adjacent_nodes_at_node[newNodes]
@@ -2245,7 +2236,7 @@ class RasterModelGrid(
         Examples
         --------
         The example will use a 4,4 grid with node data values
-        as illustrated:
+        as illustrated::
 
             -9999. -9999. -9999. -9999.
             -9999.    67.     0. -9999.
@@ -2254,19 +2245,27 @@ class RasterModelGrid(
 
         >>> import numpy as np
         >>> from landlab import RasterModelGrid
-        >>> rmg = RasterModelGrid((4,4))
+        >>> rmg = RasterModelGrid((4, 4))
         >>> rmg.status_at_node
         array([1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1], dtype=uint8)
-        >>> node_data = np.array([-9999., -9999., -9999., -9999.,
-        ...                      -9999.,    67.,    67., -9999.,
-        ...                      -9999.,    67.,     0., -9999.,
-        ...                      -9999., -9999., -9999., -9999.])
+        >>> node_data = np.array(
+        ...     [
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0],
+        ...         [-9999.0, 67.0, 67.0, -9999.0],
+        ...         [-9999.0, 67.0, 0.0, -9999.0],
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0],
+        ...     ]
+        ... ).flatten()
         >>> rmg.set_watershed_boundary_condition_outlet_coords(
-        ...     (2, 2), node_data, -9999.)
-        >>> rmg.status_at_node
-        array([4, 4, 4, 4, 4, 0, 0, 4, 4, 0, 1, 4, 4, 4, 4, 4], dtype=uint8)
+        ...     (2, 2), node_data, -9999.0
+        ... )
+        >>> rmg.status_at_node.reshape(rmg.shape)
+        array([[4, 4, 4, 4],
+               [4, 0, 0, 4],
+               [4, 0, 1, 4],
+               [4, 4, 4, 4]], dtype=uint8)
 
-        LLCATS: BC
+        :meta landlab: boundary-condition
         """
         # get node_data if a field name
         node_data = self.return_array_or_field_values("node", node_data)
@@ -2321,19 +2320,30 @@ class RasterModelGrid(
 
         >>> import numpy as np
         >>> from landlab import RasterModelGrid
-        >>> rmg = RasterModelGrid((4,4))
-        >>> rmg.status_at_node
-        array([1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1], dtype=uint8)
-        >>> node_data = np.array([-9999., -9999., -9999., -9999.,
-        ...                      -9999.,    67.,    67., -9999.,
-        ...                      -9999.,    67.,     0., -9999.,
-        ...                      -9999., -9999., -9999., -9999.])
+        >>> rmg = RasterModelGrid((4, 4))
+        >>> rmg.status_at_node.reshape(rmg.shape)
+        array([[1, 1, 1, 1],
+               [1, 0, 0, 1],
+               [1, 0, 0, 1],
+               [1, 1, 1, 1]], dtype=uint8)
+        >>> node_data = np.array(
+        ...     [
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0],
+        ...         [-9999.0, 67.0, 67.0, -9999.0],
+        ...         [-9999.0, 67.0, 0.0, -9999.0],
+        ...         [-9999.0, -9999.0, -9999.0, -9999.0],
+        ...     ]
+        ... ).flatten()
         >>> outlet = rmg.set_watershed_boundary_condition_outlet_id(
-        ...     10, node_data, -9999.)
-        >>> rmg.status_at_node
-        array([4, 4, 4, 4, 4, 0, 0, 4, 4, 0, 1, 4, 4, 4, 4, 4], dtype=uint8)
+        ...     10, node_data, -9999.0
+        ... )
+        >>> rmg.status_at_node.reshape(rmg.shape)
+        array([[4, 4, 4, 4],
+               [4, 0, 0, 4],
+               [4, 0, 1, 4],
+               [4, 4, 4, 4]], dtype=uint8)
 
-        LLCATS: BC
+        :meta landlab: boundary-condition
         """
         # get node_data if a field name
         node_data = self.return_array_or_field_values("node", node_data)

@@ -1,13 +1,14 @@
+import hypothesis.extra.numpy as hynp
+import pytest
+from hypothesis import given
+from hypothesis.strategies import floats, integers
+from numpy.testing import assert_array_equal
+
 from landlab.plot.layers import (
     _insert_shorelines,
     _interp_zero_crossings,
     _search_zero_crossings,
 )
-from hypothesis.strategies import integers, floats
-from hypothesis import given
-from numpy.testing import assert_array_equal
-import hypothesis.extra.numpy as hynp
-import pytest
 
 
 @given(
@@ -78,8 +79,7 @@ def test_interp_zero_crossings_bounds_error(shoreline):
 
 
 def test_interp_zero_crossings_last_element():
-    with pytest.raises(ValueError):
-        _interp_zero_crossings([1.0, 3.0, 5.0], [1, 1, 0], [2])
+    assert_array_equal(_interp_zero_crossings([1.0, 3.0, 5.0], [1, 1, 0], [2]), [5.0])
 
 
 def test_interp_shoreline_all_shoreline():
