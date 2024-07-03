@@ -224,6 +224,14 @@ class ValleyWiden_DS(Component):
                         print("depth_at_node[i]",depth_at_node[i])
                         print("z[latnode]",z[lat_node])
                         print("z[i]",z[i])
+                        
+                        """
+                        New Outline:
+                        if status at nodes = solid bedrock:
+                            laterally erode
+                            track volume eroded and send downstream
+                            check if there will be a collapse
+                        """
                     if status_lat_nodes[lat_node] == 2:
                         #^ if status ==2, you have collapsed, not bedrock
                         """
@@ -279,6 +287,7 @@ class ValleyWiden_DS(Component):
 
                         
                         """
+                        Now writing on July 3, 2024. I think the below note was written February 2024....
                         # trying somethign new for voldiff
                         vol diff is now going to be a percentage of the height of the
                         lateral node. This si arbitrary. 
@@ -286,10 +295,12 @@ class ValleyWiden_DS(Component):
                         Then it can collapse for the first time. 
                         Note, my explanation below is from the old code.
                         """
-                        # vol_diff is the volume that must be eroded from lat_node so that its
-                        # elevation is the same as primary node
-                        voldiff = (depth_at_node[i]) * grid.dx ** 2
-                        # voldiff = (z[lat_node] - z[i]) * grid.dx **2 * 0.1
+                        # vol_diff is the volume that must be eroded from lat_node so that it collapses for the first time
+                        """
+                        3july2024: ** does this voldiff need to be a field so that can track how much undercutting has already happened?
+                        NO the tracking happens in vol_lat 
+                        """
+                        voldiff = (z[lat_node] - z[i]) * grid.dx **2 * 0.1
 
                         status_lat_nodes[lat_node] = 1
                         #^node status=1 means that now this br valley wall has experienced some erosion
@@ -307,10 +318,9 @@ class ValleyWiden_DS(Component):
                                 print("dzlatcumu before", dzlat_cumu[lat_node])
                             #ALL***: ^now this line is just telling me: will this
                             # valley wall collapse?
-                            #*****************************
-                            #SOMETHING FUNKY GOING ON BELOW! CHECK!
-                            dzlat_ts[lat_node] = depth_at_node[i] * -1.0
-                            # ^ Change elevation of lateral node by the height undercut (water depth)
+
+                            dzlat_ts[lat_node] = (z[lat_node] - z[i]) * 0.1
+                            # ^ Change elevation of lateral node by the percentage undercut (hard coded as 10% for now)
                             vol_lat[lat_node] = 0.0
                             # ^after the lateral node is eroded, reset its volume eroded to
                             # zero
