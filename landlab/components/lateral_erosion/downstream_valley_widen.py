@@ -17,11 +17,14 @@ from landlab.utils.return_array import return_array_at_node
 
 # Hard coded constants
 cfl_cond = 0.3  # CFL timestep condition
-wid_coeff = 0.4  # coefficient for calculating channel width
+"""
+26Feb2024: important note! I changed wid_coeff from 0.4 to 0.04 because flow depths were 11m when wall height was only 6 m.
+"""
+wid_coeff = 0.04  # coefficient for calculating channel width
 wid_exp = 0.35  # exponent for calculating channel width
 
 
-class ValleyWiden(Component):
+class ValleyWiden_DS(Component):
     """
     Laterally erode neighbor node through fluvial erosion AND add volume of
     collapsed bedrock to channel as sediment of a specified size (Dchar).
@@ -72,21 +75,10 @@ class ValleyWiden(Component):
         self,
         grid,
         Kl=None,
-        Dchar=None,
         discharge_field="drainage_area",
         flow_accumulator=None,
-        g=9.81,
-        sed_density=2700,
-        fluid_density=1000,
-        shields_thresh=0.05,
-        sec_per_year=31557600.0,
-        b_sde = 0.5,    #b_sp from sedflux dep eroder
-        Qs_thresh_prefactor = 3.668127525963118e-8,    #from sedflux dep eroder
-        Qs_power_onAthresh = 0.33333333333333,    #from sedflux dep eroder
-        Qs_prefactor = 3.5972042802486196e-7,    #from sedflux dep eroder
-        Qs_power_onA = 0.6333333333333333,    #from sedflux dep eroder
     ):
-        super(ValleyWiden, self).__init__(grid)
+        super(ValleyWiden_DS, self).__init__(grid)
 
         assert isinstance(
             grid, RasterModelGrid
@@ -130,10 +122,6 @@ class ValleyWiden(Component):
             self._status_lat_nodes = grid.at_node["status_lat_nodes"]
         else:
             self._status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node")
-        if "block_size" in grid.at_node:
-            self._block_size = grid.at_node["block_size"]
-        else:
-            self._block_size = grid.add_zeros("block_size", at="node")
         save_dzlat_ts = 1
         if save_dzlat_ts:
             if "dzlat_ts" in grid.at_node:
@@ -165,15 +153,10 @@ class ValleyWiden(Component):
         grid = self._grid
         Kl = self._Kl
 
-#        qs_in = self._qs_in
-        #july 28, 2020: removign the above because I want qs_in reset every timestep
         vol_lat = self._grid.at_node["volume__lateral_erosion"]
 
         z = grid.at_node["topographic__elevation"]
 
-        debug7 = 0
-        if debug7:
-            print("qs_in", qs_in)
         # clear qsin for next loop
         if "inlet_sediment__flux" in grid.at_node:
             # qs_in = np.copy(self._grid.at_node["inlet_sediment__flux"])
@@ -183,10 +166,13 @@ class ValleyWiden(Component):
         #^ version of line from 1/2020. 7/28/2020: changed noclobber=False to clobber=True
 
         lat_nodes = np.zeros(grid.number_of_nodes, dtype=int)
-        status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node", clobber=True)#, noclobber=False)
+        status_lat_nodes = self._grid.at_node["status_lat_nodes"]#, noclobber=False)
+
+        #status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node", clobber=True)#, noclobber=False)
         dzlat_ts = np.zeros(grid.number_of_nodes, dtype=float)
         vol_lat_dt = np.zeros(grid.number_of_nodes)
         node_A = self._A
+        dzlat_cumu = self._dzlat
         #4/25/2022 AL added thsi above. 
         # I believe this works now along with added stuff on line 358
         # node_A = grid.at_node["surface_water__discharge"]
@@ -208,10 +194,15 @@ class ValleyWiden(Component):
         # reverse list so we go from upstream to down stream
         dwnst_nodes = dwnst_nodes[::-1]
         max_slopes[:] = max_slopes.clip(0)
+        
+        #below, water depth taken from original lateral erosion code, but now
+        # for all nodes, not just one. (original was water depth at a single node, now array of all)
+        depth_at_node = wid_coeff * node_A ** wid_exp
 
         """
         #ALL***: below is only for finding the lateral node
         """
+        debug4=0
         for i in dwnst_nodes:
             # potential lateral erosion initially set to 0
             petlat = 0.0
@@ -225,10 +216,16 @@ class ValleyWiden(Component):
                 if lat_node > 0 and z[lat_node] > z[i]:
                     # ^ if the elevation of the lateral node is higher than primary node, keep going
                     ### below v ARE YOU BLOCKS OR BEDROCK?
-                    debug3=0
-                    debug=0
-                    if block_size[lat_node] > 0.0:
-                        #^ if block size >0.0, you have collapsed, not bedrock
+                    debug3 = 0
+                    if debug3:
+                        print(" ")
+                        print("latnode ", lat_node)
+                        print("node A", node_A[i])
+                        print("depth_at_node[i]",depth_at_node[i])
+                        print("z[latnode]",z[lat_node])
+                        print("z[i]",z[i])
+                    if status_lat_nodes[lat_node] == 2:
+                        #^ if status ==2, you have collapsed, not bedrock
                         """
                         new version 23February2024: My vision is that this will be a lateral eroder that is more
                         simple than the amazing grainsize lateral eroder I have already. this version will 
@@ -239,14 +236,16 @@ class ValleyWiden(Component):
                         4. When all blocks eroded away, switch back to bedrock. 
                        
                         """
-
+                        if debug3:
+                            print(" collapsed already")
+                            print("latnode status", status_lat_nodes)
                         #if lat node is already blocks: calc ******Elat WITH NEW K_lat******, track undercutting to remove this volume at the end of the loop.
-                        petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
+                        K_lat = Kl*0.5
+                        petlat = -K_lat[i] * node_A[i] * max_slopes[i] * inv_rad_curv
                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
                         vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
                         # vol_diff is the volume that must be eroded from lat_node so that its
-                        # elevation is the same as node downstream of primary node
-#                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
+                        # undercut
                         voldiff = depth_at_node[i] * grid.dx ** 2
                         # below, send sediment downstream, units of volume
                         """
@@ -258,20 +257,20 @@ class ValleyWiden(Component):
                             print("time = ", precip.elapsed_time)
                             toc=time.time()
                             print("elapsed time = ", toc-tic)
-                            print(frog)
-                        status_lat_nodes[lat_node] = 3
-                        if debug3 and lat_node == 438:
-                            print("blocks can't transport")
+                            #print(frog)
+
                         #*******WILL VALLEY WALL COLLAPSE again?
                         if vol_lat[lat_node] >= voldiff:
                             dzlat_ts[lat_node] = depth_at_node[i] * -1.0
                             # ^ Change elevation of lateral node by the length undercut
+                            dzlat_cumu[lat_node] += dzlat_ts[lat_node]
                             vol_lat[lat_node] = 0.0
                             # ^after the lateral node is eroded, reset its volume eroded to
                             # zero
+                            dzlat_cumu[lat_node] += dzlat_ts[lat_node]
                             ####HAVE ALL BLOCKS BEEN ERODED? compare lat and primary node within 5mm
                             if np.isclose(z[lat_node], z[i], atol=0.005):
-                                block_size[lat_node] = 0.0
+                                status_lat_nodes[lat_node] = 0.0
 
                     else:    # below is for fresh bedrock valley walls
                         petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
@@ -294,63 +293,64 @@ class ValleyWiden(Component):
 
                         status_lat_nodes[lat_node] = 1
                         #^node status=1 means that now this br valley wall has experienced some erosion
-                        if debug:
-                            print("petlat_lateral", petlat*dt)
+
                         #*******WILL VALLEY WALL COLLAPSE for the first time?
                         if vol_lat[lat_node] >= voldiff:
+                            debug3 = 0
+                            if debug3:
+                                print("")
+                                print("line 304")
+                                print("valley wall collapse first time ")
+                                print("status lat node", status_lat_nodes[lat_node])
+                                print("vol_lat before", vol_lat[lat_node])
+
+                                print("dzlatcumu before", dzlat_cumu[lat_node])
                             #ALL***: ^now this line is just telling me: will this
                             # valley wall collapse?
                             #*****************************
                             #SOMETHING FUNKY GOING ON BELOW! CHECK!
                             dzlat_ts[lat_node] = depth_at_node[i] * -1.0
-                            # ^ Change elevation of lateral node by the length undercut
+                            # ^ Change elevation of lateral node by the height undercut (water depth)
                             vol_lat[lat_node] = 0.0
                             # ^after the lateral node is eroded, reset its volume eroded to
                             # zero
-                            ####change block size status from bedrock to blocks
-                            block_size[lat_node] = Dchar
+                            ####change node status from bedrock to blocks
                             status_lat_nodes[lat_node] = 2
+
+                            dzlat_cumu[lat_node] += dzlat_ts[lat_node]
+                            debug3 = 0
+                            if debug3:
+                                print(" ")
+                                print("petlat", petlat)
+                                print("dzlatcumu after", dzlat_cumu[lat_node])
+
+                                print("vol_lat after", vol_lat[lat_node])
+                                print("depth_at_node[i]",depth_at_node[i])
+                                print("grid.dx**2",grid.dx**2)
+                                print("status lat nodeafter", status_lat_nodes[lat_node])
+
+                                print("dzlat[latnode]", dzlat_ts[lat_node])
+                                print("z[latnode]",z[lat_node])
+                                print("z[i]",z[i])
+                                print("laterocumu", grid.at_node["lateral_erosion__depth_cum"])
+                                print("dzlat_ts", dzlat_ts)
+                                #debug4 = 1
+                                #print(frog)
                         # send sediment downstream. for bedrock erosion only
                         """
                         May11, remove qs_in
                         """
                         qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
-                        if np.any(np.isnan(qs_in))==True:
-                                print("we got a nan in qs_in, line 397")
-                                print(" ")
-                                print("downstream node", flowdirs[i])
-                                print("qs_in[flowdirs[i]]", qs_in[flowdirs[i]])
-                                print("petlat", petlat)
-                                print("depth_at_nodes", depth_at_node[i])
-                                print("transcap", transcap_here_ts)
-                                print("relsedflux", rel_sed_flux[i])
-                                print("avail_trans_cap", avail_trans_cap)
-                                print("pile_vol", pile_volume)
-                                print("dzlat[latnode]", dzlat_ts[lat_node])
-                                print("z[latnode]",z[lat_node])
-                                print("z[i]",z[i])
-                                print(" ")
-                                print("pile volume", pile_volume)
-                                print("trans cap here", chan_trans_cap[i])
-                                print("transcaphere_ts", transcap_here_ts)
-                                print("avail trans cap", avail_trans_cap)
-                                print("dt", dt)
-                                print("time = ", precip.elapsed_time)
-                                toc=time.time()
-                                print("elapsed time = ", toc-tic)
+                        #if debug3:
+                         #   print("qsin flowdirs[i]",qs_in[flowdirs[i]])
 
-                                print(frog)
-#                        print("qs_in[flowdirs[i]] AFTER", qs_in[flowdirs[i]])
 #        qs[:] = qs_in
-        debug2=0
-        if debug2:
-            print(" ")
-#            print("qs_in", qs_in)
-#            print("status latnodes", status_lat_nodes)
+        #grid.at_node["lateral_erosion__depth_cum"][:] += dzlat_ts
+        if debug4:
+            print("laterocumu", grid.at_node["lateral_erosion__depth_cum"])
             print("dzlat_ts", dzlat_ts)
-#            print(frog)
-        
-        grid.at_node["lateral_erosion__depth_cum"][:] += dzlat_ts
+            print(frog)
+
         #^ AL: this only keeps track of cumulative lateral erosion at each cell.
 
         if "dzlat_ts" in grid.at_node:
@@ -358,5 +358,4 @@ class ValleyWiden(Component):
         #**AL: 11/18/21: added the above few lines to save lateral erosion per timestep
         # change height of landscape by just removing laterally eroded stuff.
         z[:] += dzlat_ts
-#        print("z in lat", z)
-        return grid
+
