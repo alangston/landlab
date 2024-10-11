@@ -5,13 +5,13 @@ from collections import deque
 import numpy as np
 import pytest
 
-from landlab import FieldError, HexModelGrid, RasterModelGrid
-from landlab.components import (
-    FlowAccumulator,
-    FlowDirectorDINF,
-    FlowDirectorSteepest,
-    LakeMapperBarnes,
-)
+from landlab import FieldError
+from landlab import HexModelGrid
+from landlab import RasterModelGrid
+from landlab.components import FlowAccumulator
+from landlab.components import FlowDirectorDINF
+from landlab.components import FlowDirectorSteepest
+from landlab.components import LakeMapperBarnes
 from landlab.utils import StablePriorityQueue
 
 """
@@ -156,7 +156,7 @@ def test_permitted_overfill():
     z.reshape(mg.shape)[1, 1:-1] = [1.0, 0.2, 0.1, 1.0000000000000004, 1.5]
     _ = FlowAccumulator(mg)
     lmb = LakeMapperBarnes(mg, method="Steepest")
-    lmb._closed = mg.zeros("node", dtype=bool)
+    lmb._closed = mg.zeros(at="node", dtype=bool)
     lmb._closed[mg.status_at_node == mg.BC_NODE_IS_CLOSED] = True
     open = StablePriorityQueue()
     edges = np.array([7])

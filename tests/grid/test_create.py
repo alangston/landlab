@@ -5,18 +5,19 @@ import numpy as np
 import pytest
 from hypothesis import given
 from hypothesis.strategies import text
-from numpy.testing import assert_array_almost_equal, assert_array_equal
+from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_array_equal
 
-from landlab import HexModelGrid, RadialModelGrid, RasterModelGrid
-from landlab.grid.create import (
-    _parse_args_kwargs,
-    add_boundary_conditions,
-    add_field_from_function,
-    as_list_of_tuples,
-    create_grid,
-    grid_from_dict,
-    norm_grid_description,
-)
+from landlab import HexModelGrid
+from landlab import RadialModelGrid
+from landlab import RasterModelGrid
+from landlab.grid.create import _parse_args_kwargs
+from landlab.grid.create import add_boundary_conditions
+from landlab.grid.create import add_field_from_function
+from landlab.grid.create import as_list_of_tuples
+from landlab.grid.create import create_grid
+from landlab.grid.create import grid_from_dict
+from landlab.grid.create import norm_grid_description
 
 SIMPLE_PARAMS_STR = """
 grid:
@@ -510,7 +511,7 @@ def test_field_units(units):
     grid = create_grid(params)
     assert grid.at_node["topographic__elevation"] == pytest.approx(0.0)
     assert grid.at_node.units["topographic__elevation"] == units
-    assert grid.field_units("node", "topographic__elevation") == units
+    assert grid.field_units("topographic__elevation", at="node") == units
 
 
 @given(units=text())
@@ -537,4 +538,4 @@ def test_repeated_units(units):
     grid = create_grid(params)
     assert grid.at_node["topographic__elevation"] == pytest.approx(0.0)
     assert grid.at_node.units["topographic__elevation"] == units
-    assert grid.field_units("node", "topographic__elevation") == units
+    assert grid.field_units("topographic__elevation", at="node") == units

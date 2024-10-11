@@ -2,15 +2,17 @@ import pytest
 from numpy.testing import assert_array_almost_equal
 
 from landlab import RasterModelGrid
-from landlab.components import ErosionDeposition, FlowAccumulator, Space
+from landlab.components import ErosionDeposition
+from landlab.components import FlowAccumulator
+from landlab.components import Space
 
 
 @pytest.fixture
 def grid():
     grid = RasterModelGrid((10, 10), xy_spacing=10.0)
     grid.set_closed_boundaries_at_grid_edges(True, True, True, True)
-    z = grid.add_zeros("node", "topographic__elevation")
-    grid.add_zeros("node", "soil__depth")
+    z = grid.add_zeros("topographic__elevation", at="node")
+    grid.add_zeros("soil__depth", at="node")
     z += grid.x_of_node.copy() + grid.y_of_node.copy()
     z[25] -= 40
     z[35] -= 40
