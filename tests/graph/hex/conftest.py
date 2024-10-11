@@ -1,7 +1,9 @@
-from landlab.graph.hex.hex import HorizontalHexTriGraph
-from landlab.graph.hex.hex import HorizontalRectTriGraph
-from landlab.graph.hex.hex import VerticalHexTriGraph
-from landlab.graph.hex.hex import VerticalRectTriGraph
+from landlab.graph.hex.hex import (
+    HorizontalHexTriGraph,
+    HorizontalRectTriGraph,
+    VerticalHexTriGraph,
+    VerticalRectTriGraph,
+)
 
 
 def pytest_generate_tests(metafunc):

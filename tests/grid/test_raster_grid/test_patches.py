@@ -1,6 +1,5 @@
 import numpy as np
-from pytest import approx
-from pytest import raises
+from pytest import approx, raises
 
 from landlab import RasterModelGrid
 

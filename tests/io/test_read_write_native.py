@@ -4,11 +4,9 @@ import pickle
 
 from numpy.testing import assert_array_equal
 
-from landlab import HexModelGrid
-from landlab import RasterModelGrid
+from landlab import HexModelGrid, RasterModelGrid
 from landlab.components import FlowAccumulator
-from landlab.io.native_landlab import load_grid
-from landlab.io.native_landlab import save_grid
+from landlab.io.native_landlab import load_grid, save_grid
 
 
 def compare_dictionaries(dict_1, dict_2, dict_1_name, dict_2_name, path=""):

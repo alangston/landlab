@@ -9,8 +9,7 @@ import numpy as np
 from numpy.testing import assert_equal
 
 from landlab import RasterModelGrid
-from landlab.components import ErosionDeposition
-from landlab.components import FlowAccumulator
+from landlab.components import ErosionDeposition, FlowAccumulator
 
 
 def test_erodep_slope_area_small_vs():

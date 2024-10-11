@@ -2,8 +2,7 @@ import numpy as np
 import pytest
 
 from landlab import ExampleData
-from landlab.components import FlowDirectorSteepest
-from landlab.components import NetworkSedimentTransporter
+from landlab.components import FlowDirectorSteepest, NetworkSedimentTransporter
 from landlab.data_record import DataRecord
 from landlab.grid.network import NetworkModelGrid
 from landlab.io import read_shapefile

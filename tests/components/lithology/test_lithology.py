@@ -10,8 +10,7 @@ from numpy.testing import assert_array_equal  # , assert_array_almost_equal
 
 from landlab import RasterModelGrid
 from landlab.bmi import wrap_as_bmi
-from landlab.components import LithoLayers
-from landlab.components import Lithology
+from landlab.components import LithoLayers, Lithology
 
 
 def test_lithology_as_bmi():

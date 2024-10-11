@@ -4,8 +4,7 @@ import time
 from matplotlib.pyplot import axis
 from numpy import random
 
-from landlab.ca.celllab_cts import CAPlotter
-from landlab.ca.celllab_cts import Transition
+from landlab.ca.celllab_cts import CAPlotter, Transition
 from landlab.io.native_landlab import save_grid
 
 _DEBUG = False

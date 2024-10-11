@@ -9,11 +9,9 @@ import pytest
 from numpy.testing import assert_array_equal
 
 from landlab import RasterModelGrid
-from landlab.components import DepthDependentTaylorDiffuser
-from landlab.components import ExponentialWeatherer
+from landlab.components import DepthDependentTaylorDiffuser, ExponentialWeatherer
 
 
-@pytest.mark.slow
 def test_4x7_grid_vs_analytical_solution():
     """Test against known analytical solution."""
 

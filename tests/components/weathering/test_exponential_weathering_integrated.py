@@ -8,8 +8,7 @@ Created on Fri Oct 30 17:25:27 2020
 import numpy as np
 import pytest
 
-from landlab import HexModelGrid
-from landlab import RasterModelGrid
+from landlab import HexModelGrid, RasterModelGrid
 from landlab.components import ExponentialWeathererIntegrated
 
 

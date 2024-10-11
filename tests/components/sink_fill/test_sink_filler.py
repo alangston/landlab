@@ -5,17 +5,12 @@ Created on Tues Oct 20, 2015
 
 @author: dejh
 """
-
 import numpy as np  # for use of np.round
 import pytest
-from numpy.testing import assert_array_almost_equal
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
-from landlab import FieldError
-from landlab import RasterModelGrid
-from landlab.components import FlowAccumulator
-from landlab.components import SinkFiller
-from landlab.components import SinkFillerBarnes
+from landlab import FieldError, RasterModelGrid
+from landlab.components import FlowAccumulator, SinkFiller, SinkFillerBarnes
 
 XX = RasterModelGrid.BAD_INDEX
 

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["cython", "numpy>=2.0,<3", "setuptools", "wheel"]
+requires = ["cython~=3.0.0b3", "numpy", "setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -21,6 +21,7 @@ keywords = [
   "model coupling",
   "numerical modeling",
 ]
+license = {file = "LICENSE.rst"}
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
@@ -37,7 +38,6 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
   "bmipy",
-  "importlib-resources; python_version < '3.12'",
   "matplotlib",
   "netcdf4",
   "numpy >=1.20",
@@ -51,14 +51,11 @@ dependencies = [
 ]
 dynamic = ["readme", "version"]
 
-[project.license]
-text = "MIT"
-
 [project.urls]
 homepage = "https://github.com/landlab"
 documentation = "https://landlab.readthedocs.io"
 repository = "https://github.com/landlab"
-changelog = "https://github.com/landlab/landlab/blob/develop/CHANGES.md"
+changelog = "https://github.com/landlab/landlab/blob/develop/CHANGES.rst"
 
 [project.optional-dependencies]
 dev = ["nox"]
@@ -76,7 +73,6 @@ landlab = "landlab.cmd.landlab:landlab"
 
 [tool.setuptools]
 include-package-data = true
-package-dir = { "" = "src" }
 
 [tool.setuptools.package-data]
 landlab = [
@@ -92,14 +88,12 @@ landlab = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["landlab*"]
 
 [tool.setuptools.dynamic]
+readme = {file = ["README.rst", "AUTHORS.rst"]}
 version = {attr = "landlab._version.__version__"}
-
-[tool.setuptools.dynamic.readme]
-file = ["README.md", "AUTHORS.md"]
-content-type = "text/markdown"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -139,26 +133,8 @@ ignore = [".nox", "build"]
 
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-*"
-skip = "*-musllinux_* *-win32*"
+skip = "*-musllinux_*"
 archs = "x86_64,aarch64,arm64,AMD64,x86"
-test-command = [
-	"python -c \"import landlab; print(landlab.__version__)\"",
-	"python -c \"from landlab import RasterModelGrid; print(RasterModelGrid((3, 3)))\"",
-]
-
-[tool.cibuildwheel.linux.environment]
-CPPFLAGS = "-fopenmp"
-
-[tool.cibuildwheel.macos.environment]
-MACOSX_DEPLOYMENT_TARGET = "12.0"
-CC = "clang"
-CXX = "clang++"
-# CPPFLAGS = "-Xclang -fopenmp"
-# LDFLAGS = "-lomp"
-
-[tool.cython-lint]
-max-line-length = 88
-exclude = "tests/components/flow_router/ext/single_flow/priority_routing/test_breach_c.pyx"
 
 [tool.conda-lock]
 channels = ["conda-forge", "defaults"]
@@ -166,38 +142,22 @@ platforms = ["osx-arm64", "linux-64", "osx-64", "win-64"]
 
 [tool.towncrier]
 directory = "news"
-name = "landlab"
-filename = "CHANGES.md"
-create_add_extension = false
+package = "landlab"
+filename = "CHANGES.rst"
 single_file = true
-underlines = [
-    "",
-    "",
-    "",
-]
-start_string = """
-<!-- towncrier release notes start -->
-"""
-template = "news/changelog_template.jinja"
-issue_format = "[#{issue}](https://github.com/landlab/landlab/issues/{issue})"
-title_format = "## {version} ({project_date})"
+underlines = "-`^"
+issue_format = "`#{issue} <https://github.com/landlab/landlab/issues/{issue}>`_"
+title_format = "{version} ({project_date})"
 type = [
-  {name="✨ New Components", directory="component", showcontent=true},
-  {name="📚 New Tutorial Notebooks", directory="notebook", showcontent=true},
-  {name="🍰 New Features", directory="feature", showcontent=true},
-  {name="🛠️ Bug Fixes", directory="bugfix", showcontent=true},
-  {name="📖 Documentation Enhancements", directory="docs", showcontent=true},
-  {name="🔩 Other Changes and Additions", directory="misc", showcontent=true},
+  {name="New Components", directory="component", showcontent=true},
+  {name="New Tutorial Notebooks", directory="notebook", showcontent=true},
+  {name="New Features", directory="feature", showcontent=true},
+  {name="Bug Fixes", directory="bugfix", showcontent=true},
+  {name="Documentation Enhancements", directory="docs", showcontent=true},
+  {name="Other Changes and Additions", directory="misc", showcontent=true},
 ]
 
 [tool.landlab.credits]
-exclude = '''
-(?x)^(
-  \(no\ author\)|
-  root|
-  .*\[bot\]  # ignore all bots
-)
-'''
-authors_file = "AUTHORS.md"
-author_format = "- [{name}](https://github.com/{github})"
-start_string = "<!-- credits-roll start-author-list -->"
+ignore = ["(no author)", "root", "dependabot[bot]"]
+authors_file = "AUTHORS.rst"
+author_format = "* `{name} <https://github.com/{github}>`_"

@@ -1,5 +1,3 @@
-import difflib
-import glob
 import json
 import os
 import pathlib
@@ -10,7 +8,7 @@ from packaging.requirements import Requirement
 
 PROJECT = "landlab"
 ROOT = pathlib.Path(__file__).parent
-PYTHON_VERSION = "3.12"
+PYTHON_VERSION = "3.11"
 PATH = {
     "build": ROOT / "build",
     "docs": ROOT / "docs",
@@ -21,57 +19,36 @@ PATH = {
 
 
 @nox.session(python=PYTHON_VERSION, venv_backend="conda")
-def build(session: nox.Session) -> None:
-    """Build sdist and wheel dists."""
+def test(session: nox.Session) -> None:
+    """Run the tests."""
     os.environ["WITH_OPENMP"] = "1"
 
     session.log(f"CC = {os.environ.get('CC', 'NOT FOUND')}")
-    if session.virtualenv.venv_backend != "none":
-        session.install(
-            "build",
-            *("-r", PATH["requirements"] / "required.txt"),
-        )
 
-    session.run("python", "-m", "build", "--outdir", "./build/wheelhouse")
+    session.install(
+        "-r",
+        PATH["requirements"] / "required.txt",
+        "-r",
+        PATH["requirements"] / "testing.txt",
+    )
 
-
-@nox.session(python=PYTHON_VERSION, venv_backend="conda")
-def test(session: nox.Session) -> None:
-    """Run the tests."""
-    path_args, pytest_args = pop_option(session.posargs, "--path")
-
-    if session.virtualenv.venv_backend != "none":
-        os.environ["WITH_OPENMP"] = "1"
-        session.log(f"CC = {os.environ.get('CC', 'NOT FOUND')}")
-        session.install(
-            *("-r", PATH["requirements"] / "required.txt"),
-            *("-r", PATH["requirements"] / "testing.txt"),
-        )
-        session.conda_install("richdem", channel=["nodefaults", "conda-forge"])
-
-        arg = path_args[0] if path_args else None
-        if arg is None:
-            session.install(".", "--no-deps")
-        elif os.path.isdir(arg):
-            session.install("landlab", f"--find-links={arg}", "--no-deps", "--no-index")
-        elif os.path.isfile(arg):
-            session.install(arg, "--no-deps")
-        else:
-            session.error("--path must be either a wheel for a wheelhouse folder")
+    session.conda_install("richdem", channel=["nodefaults", "conda-forge"])
+    session.install("-e", ".", "--no-deps")
 
     check_package_versions(session, files=["required.txt", "testing.txt"])
 
     args = [
-        "pytest",
-        *("-n", "auto"),
-        *("--cov", PROJECT),
+        "-n",
+        "auto",
+        "--cov",
+        PROJECT,
         "-vvv",
-        # *("--dist", "worksteal"),
-    ] + pytest_args
+        # "--dist", "worksteal",  # this is not available quite yet
+    ] + session.posargs
 
     if "CI" in os.environ:
         args.append(f"--cov-report=xml:{ROOT.absolute()!s}/coverage.xml")
-    session.run(*args)
+    session.run("pytest", *args)
 
     if "CI" not in os.environ:
         session.run("coverage", "report", "--ignore-errors", "--show-missing")
@@ -80,55 +57,36 @@ def test(session: nox.Session) -> None:
 @nox.session(name="test-notebooks", python=PYTHON_VERSION, venv_backend="conda")
 def test_notebooks(session: nox.Session) -> None:
     """Run the notebooks."""
-    path_args, pytest_args = pop_option(session.posargs, "--path")
-
     args = [
         "pytest",
         "notebooks",
         "--nbmake",
         "--nbmake-kernel=python3",
         "--nbmake-timeout=3000",
-        *("-n", "auto"),
+        "-n",
+        "auto",
         "-vvv",
-    ] + pytest_args
+    ] + session.posargs
 
-    if session.virtualenv.venv_backend != "none":
-        os.environ["WITH_OPENMP"] = "1"
-        session.conda_install("richdem", channel=["nodefaults", "conda-forge"])
-        session.install(
-            "git+https://github.com/mcflugen/nbmake.git@v1.5.4-markers",
-            *("-r", PATH["requirements"] / "required.txt"),
-            *("-r", PATH["requirements"] / "testing.txt"),
-            *("-r", PATH["requirements"] / "notebooks.txt"),
-        )
+    os.environ["WITH_OPENMP"] = "1"
 
-        arg = path_args[0] if path_args else "."
-        if arg is None:
-            session.install(".", "--no-deps")
-        elif os.path.isdir(arg):
-            session.install("landlab", f"--find-links={arg}", "--no-deps", "--no-index")
-        elif os.path.isfile(arg):
-            session.install(arg, "--no-deps")
-        else:
-            session.error("--path must be either a wheel for a wheelhouse folder")
+    session.install(
+        "-r",
+        PATH["requirements"] / "required.txt",
+        "-r",
+        PATH["requirements"] / "testing.txt",
+        "-r",
+        PATH["requirements"] / "notebooks.txt",
+    )
+    session.conda_install("richdem", channel=["nodefaults", "conda-forge"])
+    session.install("git+https://github.com/mcflugen/nbmake.git@mcflugen/add-markers")
+    session.install("-e", ".", "--no-deps")
 
     check_package_versions(
         session, files=["required.txt", "testing.txt", "notebooks.txt"]
     )
 
     session.run(*args)
-
-
-def pop_option(args: list[str], opt: str):
-    the_rest = []
-    opts = []
-    for arg in args:
-        if arg.startswith(f"{opt}="):
-            _, value = arg.split("=", maxsplit=1)
-            opts += glob.glob(value)
-        else:
-            the_rest.append(arg)
-    return opts, the_rest
 
 
 @nox.session(name="test-cli")
@@ -151,9 +109,7 @@ def lint(session: nox.Session) -> None:
     """Look for lint."""
     skip_hooks = [] if "--no-skip" in session.posargs else ["check-manifest", "pyroma"]
 
-    if session.virtualenv.venv_backend != "none":
-        session.install("pre-commit")
-
+    session.install("pre-commit")
     session.run("pre-commit", "run", "--all-files", env={"SKIP": ",".join(skip_hooks)})
 
 
@@ -183,114 +139,31 @@ def build_index(session: nox.Session) -> None:
     session.log(f"generated index at {index_file!s}")
 
 
-@nox.session(name="docs-build")
-def docs_build(session: nox.Session) -> None:
+@nox.session(name="build-docs")
+def build_docs(session: nox.Session) -> None:
     """Build the docs."""
-    docs_build_api(session)
-    docs_build_notebook_index(session)
 
-    if session.virtualenv.venv_backend != "none":
-        session.install("-r", PATH["requirements"] / "docs.txt")
+    session.install(
+        "-r",
+        PATH["requirements"] / "docs.txt",
+        "-r",
+        PATH["requirements"] / "required.txt",
+    )
+    session.install("-e", ".", "--no-deps")
 
     check_package_versions(session, files=["required.txt", "docs.txt"])
 
     PATH["build"].mkdir(exist_ok=True)
     session.run(
         "sphinx-build",
-        *("-j", "auto"),
-        *("-b", "html"),
-        # "-W",
+        "-b",
+        "html",
+        "-W",
         "--keep-going",
         PATH["docs"] / "source",
         PATH["build"] / "html",
     )
     session.log(f"generated docs at {PATH['build'] / 'html'!s}")
-
-
-@nox.session(name="docs-build-api")
-def docs_build_api(session: nox.Session) -> None:
-    docs_dir = PATH["docs"] / "source"
-
-    generated_dir = os.path.join(docs_dir, "generated", "api")
-
-    if session.virtualenv.venv_backend != "none":
-        session.install("-r", PATH["requirements"] / "docs.txt")
-
-    session.log(f"generating api docs in {generated_dir}")
-    session.run(
-        "sphinx-apidoc",
-        "-e",
-        "-force",
-        "--no-toc",
-        "--module-first",
-        *("-d", "2"),
-        f"--templatedir={docs_dir / '_templates'}",
-        *("-o", generated_dir),
-        "src/landlab",
-        "*.pyx",
-        "*.so",
-    )
-
-
-@nox.session(name="docs-build-gallery-index", python=None)
-def docs_build_notebook_index(session: nox.Session) -> None:
-    docs_dir = PATH["docs"] / "source"
-
-    for gallery in ("tutorials", "teaching"):
-        gallery_index = docs_dir / "generated" / gallery / "index.md"
-        os.makedirs(os.path.dirname(gallery_index), exist_ok=True)
-
-        sections = [
-            os.path.abspath(f.path)
-            for f in os.scandir(docs_dir / gallery)
-            if f.is_dir()
-        ]
-
-        content = (
-            [
-                f"""\
-({gallery}-gallery)=
-
-# {gallery.title()} Gallery
-"""
-            ]
-            + [
-                format_nbgallery(section, str(docs_dir), level=2)
-                for section in sorted(sections)
-            ]
-        )
-
-        with open(gallery_index, "w") as fp:
-            print((2 * os.linesep).join(content), file=fp)
-
-        session.log(gallery_index)
-
-
-def format_nbgallery(path, start, level=1):
-    title = pathlib.Path(path).stem.replace("_", " ").title()
-
-    p = os.path.relpath(path, start)
-
-    files = []
-    if glob.glob(os.path.join(path, "*.ipynb")):
-        files += [f"/{p}/*"]
-    if glob.glob(os.path.join(path, "**/*.ipynb")):
-        files += [f"/{p}/**"]
-
-    body = "\n".join(files)
-    return (
-        f"""\
-{'#' * level} {title}
-
-```{{nbgallery}}
-:glob:
-
-{body}
-```
-"""
-        if files
-        else ""
-    )
 
 
 @nox.session(name="check-versions")
@@ -368,25 +241,14 @@ with open("pyproject.toml", "rb") as fp:
         )
 
 
-@nox.session(python=False, name="check-cython-files")
-def check_cython_files(session: nox.Session) -> None:
-    """Find cython files for extension modules."""
-    cython_files = {
-        str(p.relative_to(PATH["root"]))
-        for p in pathlib.Path(PATH["root"] / "src" / "landlab").rglob("**/*.pyx")
-    }
-    print(os.linesep.join(sorted(cython_files)))
-
-    with open("cython-files.txt") as fp:
-        actual = [line.rstrip() for line in fp.readlines()]
-
-    diff = list(
-        difflib.unified_diff(
-            actual, sorted(cython_files), fromfile="old", tofile="new", lineterm=""
-        )
-    )
-    if diff:
-        session.error("\n".join([""] + diff + ["cython-files.txt needs updating"]))
+@nox.session
+def build(session: nox.Session) -> None:
+    """Build sdist and wheel dists."""
+    session.install("pip")
+    session.install("build")
+    session.run("python", "--version")
+    session.run("pip", "--version")
+    session.run("python", "-m", "build", "--outdir", "./build/wheelhouse")
 
 
 @nox.session
@@ -430,7 +292,7 @@ def clean(session):
         with session.chdir(folder):
             shutil.rmtree("build", ignore_errors=True)
             shutil.rmtree("build/wheelhouse", ignore_errors=True)
-            shutil.rmtree(f"src/{PROJECT}.egg-info", ignore_errors=True)
+            shutil.rmtree(f"{PROJECT}.egg-info", ignore_errors=True)
             shutil.rmtree(".pytest_cache", ignore_errors=True)
             shutil.rmtree(".venv", ignore_errors=True)
 

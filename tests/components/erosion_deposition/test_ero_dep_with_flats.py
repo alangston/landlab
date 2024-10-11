@@ -5,18 +5,16 @@ Created on Thu Apr 23 09:09:49 2020
 @author: gtucker
 """
 
-from numpy.testing import assert_array_almost_equal
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 from landlab import RasterModelGrid
-from landlab.components import ErosionDeposition
-from landlab.components import FlowAccumulator
+from landlab.components import ErosionDeposition, FlowAccumulator
 
 
 def test_without_depression_handling():
     grid = RasterModelGrid((3, 5), xy_spacing=10.0)
     grid.set_closed_boundaries_at_grid_edges(False, True, False, True)
-    z = grid.add_zeros("topographic__elevation", at="node")
+    z = grid.add_zeros("node", "topographic__elevation")
     z[grid.x_of_node < 15.0] = 10.0
 
     fa = FlowAccumulator(grid)
@@ -66,7 +64,7 @@ def test_without_depression_handling():
 def test_with_depression_handling():
     grid = RasterModelGrid((3, 5), xy_spacing=10.0)
     grid.set_closed_boundaries_at_grid_edges(False, True, False, True)
-    z = grid.add_zeros("topographic__elevation", at="node")
+    z = grid.add_zeros("node", "topographic__elevation")
     z[grid.x_of_node < 15.0] = 10.0
 
     fa = FlowAccumulator(
@@ -166,7 +164,7 @@ def test_with_depression_handling():
 def test_adaptive_solver_without_depression_handling():
     grid = RasterModelGrid((3, 5), xy_spacing=10.0)
     grid.set_closed_boundaries_at_grid_edges(False, True, False, True)
-    z = grid.add_zeros("topographic__elevation", at="node")
+    z = grid.add_zeros("node", "topographic__elevation")
     z[grid.x_of_node < 15.0] = 10.0
 
     fa = FlowAccumulator(grid)
@@ -216,7 +214,7 @@ def test_adaptive_solver_without_depression_handling():
 def test_adaptive_solver_with_depression_handling():
     grid = RasterModelGrid((3, 5), xy_spacing=10.0)
     grid.set_closed_boundaries_at_grid_edges(False, True, False, True)
-    z = grid.add_zeros("topographic__elevation", at="node")
+    z = grid.add_zeros("node", "topographic__elevation")
     z[grid.x_of_node < 15.0] = 10.0
 
     fa = FlowAccumulator(

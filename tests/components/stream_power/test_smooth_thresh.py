@@ -3,8 +3,7 @@ import pytest
 from numpy.testing import assert_array_almost_equal
 
 from landlab import RasterModelGrid
-from landlab.components import FlowAccumulator
-from landlab.components import StreamPowerSmoothThresholdEroder as Spst
+from landlab.components import FlowAccumulator, StreamPowerSmoothThresholdEroder as Spst
 
 
 def test_bad_nsp():

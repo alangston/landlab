@@ -1,8 +1,7 @@
 import pytest
 
 from landlab import RasterModelGrid
-from landlab.components import FlowAccumulator
-from landlab.components import SteepnessFinder
+from landlab.components import FlowAccumulator, SteepnessFinder
 
 
 def test_route_to_multiple_error_raised():

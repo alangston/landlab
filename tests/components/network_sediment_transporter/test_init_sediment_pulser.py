@@ -1,8 +1,7 @@
 import pytest
 
 from landlab import RasterModelGrid
-from landlab.components import SedimentPulserAtLinks
-from landlab.components import SedimentPulserEachParcel
+from landlab.components import SedimentPulserAtLinks, SedimentPulserEachParcel
 
 variable_list = {
     "_grid",

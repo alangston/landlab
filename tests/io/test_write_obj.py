@@ -5,8 +5,7 @@ import pathlib
 
 import pytest
 
-from landlab import HexModelGrid
-from landlab import RasterModelGrid
+from landlab import HexModelGrid, RasterModelGrid
 from landlab.io import write_obj
 
 LITTLE_HEX_OBJ = """# landlabgrid

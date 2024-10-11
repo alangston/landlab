@@ -1,10 +1,8 @@
 """Test StructuredQuadGraph."""
-
 from numpy.testing import assert_array_equal
 from pytest import approx
 
-from landlab.graph import DualStructuredQuadGraph
-from landlab.graph import DualUniformRectilinearGraph
+from landlab.graph import DualStructuredQuadGraph, DualUniformRectilinearGraph
 
 
 def test_create():

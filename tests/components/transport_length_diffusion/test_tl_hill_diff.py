@@ -10,9 +10,11 @@ import pytest
 from numpy.testing import assert_almost_equal
 
 from landlab import RasterModelGrid
-from landlab.components import FlowAccumulator
-from landlab.components import FlowDirectorSteepest
-from landlab.components import TransportLengthHillslopeDiffuser
+from landlab.components import (
+    FlowAccumulator,
+    FlowDirectorSteepest,
+    TransportLengthHillslopeDiffuser,
+)
 
 
 def test_route_to_multiple_error_raised():

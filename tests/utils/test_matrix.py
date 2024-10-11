@@ -2,8 +2,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
-from landlab import HexModelGrid
-from landlab import RasterModelGrid
+from landlab import HexModelGrid, RasterModelGrid
 from landlab.utils import get_core_node_matrix
 
 

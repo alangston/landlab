@@ -3,8 +3,7 @@ import pytest
 from numpy import testing
 
 from landlab import RasterModelGrid
-from landlab.components import ErosionDeposition
-from landlab.components import FlowAccumulator
+from landlab.components import ErosionDeposition, FlowAccumulator
 
 
 def test_Ff_too_high_vals():

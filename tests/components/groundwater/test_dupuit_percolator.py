@@ -6,13 +6,10 @@ Created on Tue Jun  4 16:26:31 2019
 """
 
 import numpy as np
-from numpy.testing import assert_almost_equal
-from numpy.testing import assert_equal
+from numpy.testing import assert_almost_equal, assert_equal
 
-from landlab import HexModelGrid
-from landlab import RasterModelGrid
-from landlab.components import FlowAccumulator
-from landlab.components import GroundwaterDupuitPercolator
+from landlab import HexModelGrid, RasterModelGrid
+from landlab.components import FlowAccumulator, GroundwaterDupuitPercolator
 from landlab.grid.mappers import map_mean_of_link_nodes_to_link
 
 
@@ -202,9 +199,9 @@ def test_wt_above_surface_standard_run_step():
 
     grid = RasterModelGrid((3, 3))
     grid.set_closed_boundaries_at_grid_edges(True, True, True, False)
-    wt = grid.add_ones("water_table__elevation", at="node")
-    _ = grid.add_ones("topographic__elevation", at="node")
-    _ = grid.add_zeros("aquifer_base__elevation", at="node")
+    wt = grid.add_ones("node", "water_table__elevation")
+    _ = grid.add_ones("node", "topographic__elevation")
+    _ = grid.add_zeros("node", "aquifer_base__elevation")
 
     # initialize the groundwater model
     gdp = GroundwaterDupuitPercolator(grid, recharge_rate=0.0)
@@ -215,9 +212,9 @@ def test_wt_above_surface_standard_run_step():
 def test_wt_above_surface_adaptive_run_step():
     grid = RasterModelGrid((3, 3))
     grid.set_closed_boundaries_at_grid_edges(True, True, True, False)
-    wt = grid.add_ones("water_table__elevation", at="node")
-    _ = grid.add_ones("topographic__elevation", at="node")
-    _ = grid.add_zeros("aquifer_base__elevation", at="node")
+    wt = grid.add_ones("node", "water_table__elevation")
+    _ = grid.add_ones("node", "topographic__elevation")
+    _ = grid.add_zeros("node", "aquifer_base__elevation")
 
     # initialize the groundwater model
     gdp = GroundwaterDupuitPercolator(grid, recharge_rate=0.0)
@@ -240,11 +237,11 @@ def test_inactive_interior_node():
 
     mg = RasterModelGrid((4, 4), xy_spacing=1.0)
     mg.status_at_node[5] = mg.BC_NODE_IS_FIXED_VALUE
-    elev = mg.add_zeros("topographic__elevation", at="node")
+    elev = mg.add_zeros("node", "topographic__elevation")
     elev[:] = 1
-    base = mg.add_zeros("aquifer_base__elevation", at="node")
+    base = mg.add_zeros("node", "aquifer_base__elevation")
     base[:] = 0
-    wt = mg.add_zeros("water_table__elevation", at="node")
+    wt = mg.add_zeros("node", "water_table__elevation")
     wt[:] = 1
 
     gdp = GroundwaterDupuitPercolator(mg)
@@ -267,11 +264,11 @@ def test_k_func():
 
     # initialize model grid
     mg = RasterModelGrid((4, 4), xy_spacing=1.0)
-    elev = mg.add_zeros("topographic__elevation", at="node")
+    elev = mg.add_zeros("node", "topographic__elevation")
     elev[:] = 1
-    base = mg.add_zeros("aquifer_base__elevation", at="node")
+    base = mg.add_zeros("node", "aquifer_base__elevation")
     base[:] = 0
-    wt = mg.add_zeros("water_table__elevation", at="node")
+    wt = mg.add_zeros("node", "water_table__elevation")
     wt[:] = 0.5
 
     # initialize model without giving k_func

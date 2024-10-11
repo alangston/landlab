@@ -3,7 +3,6 @@ Unit tests for landlab.components.overland_flow.OverlandFlow
 
 last updated: 3/14/16
 """
-
 import numpy as np
 
 from landlab import RasterModelGrid

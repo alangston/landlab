@@ -1,8 +1,7 @@
 import pytest
 
 from landlab import RasterModelGrid
-from landlab.components import FlowAccumulator
-from landlab.components import HackCalculator
+from landlab.components import FlowAccumulator, HackCalculator
 
 
 @pytest.fixture()

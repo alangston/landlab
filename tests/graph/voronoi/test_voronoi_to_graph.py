@@ -3,11 +3,12 @@ import inspect
 import numpy as np
 import pytest
 from pytest import approx
-from scipy.spatial import Delaunay
-from scipy.spatial import Voronoi
+from scipy.spatial import Delaunay, Voronoi
 
-from landlab.graph.voronoi.voronoi_to_graph import VoronoiDelaunay
-from landlab.graph.voronoi.voronoi_to_graph import VoronoiDelaunayToGraph
+from landlab.graph.voronoi.voronoi_to_graph import (
+    VoronoiDelaunay,
+    VoronoiDelaunayToGraph,
+)
 
 XY_OF_NODE = {
     "rect-horizontal-3-3": [
@@ -195,7 +196,7 @@ def test_compact_ids_without_perimeter_nodes(hex_graph, at):
     ids = ids[ids >= 0]
 
     assert ids[0] >= 0
-    assert ids[-1] <= hex_graph._mesh.sizes[at]
+    assert ids[-1] <= hex_graph._mesh.dims[at]
 
 
 @pytest.mark.parametrize("at", ("node", "link", "cell", "corner", "face", "cell"))
@@ -210,7 +211,7 @@ def test_compact_ids_with_perimeter_nodes(xy_of_hex, at):
     ids = ids[ids >= 0]
 
     assert ids[0] >= 0
-    assert ids[-1] <= graph._mesh.sizes[at]
+    assert ids[-1] <= graph._mesh.dims[at]
 
 
 @pytest.mark.parametrize("at", ["node", "link", "patch", "corner", "face", "cell"])

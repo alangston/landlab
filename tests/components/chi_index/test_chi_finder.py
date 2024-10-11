@@ -1,9 +1,7 @@
 import pytest
 
-from landlab import HexModelGrid
-from landlab import RasterModelGrid
-from landlab.components import ChiFinder
-from landlab.components import FlowAccumulator
+from landlab import HexModelGrid, RasterModelGrid
+from landlab.components import ChiFinder, FlowAccumulator
 
 
 def test_route_to_multiple_error_raised():

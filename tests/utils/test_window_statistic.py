@@ -6,10 +6,7 @@ Created on Wed Jan 13 15:34:08 2021
 
 import numpy as np
 
-from landlab import HexModelGrid
-from landlab import RadialModelGrid
-from landlab import RasterModelGrid
-from landlab import VoronoiDelaunayGrid
+from landlab import HexModelGrid, RadialModelGrid, RasterModelGrid, VoronoiDelaunayGrid
 from landlab.utils.window_statistic import calculate_window_statistic
 
 

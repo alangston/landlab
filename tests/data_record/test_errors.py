@@ -11,10 +11,7 @@ Last updated 8/27/2018
 import numpy as np
 import pytest
 
-from landlab import HexModelGrid
-from landlab import RadialModelGrid
-from landlab import RasterModelGrid
-from landlab import VoronoiDelaunayGrid
+from landlab import HexModelGrid, RadialModelGrid, RasterModelGrid, VoronoiDelaunayGrid
 from landlab.data_record import DataRecord
 
 

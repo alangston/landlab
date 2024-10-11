@@ -1,13 +1,14 @@
 """Test the storm generator and simple stream power eroder both execute."""
-
 import os
 
 import numpy as np
 
 from landlab import RasterModelGrid
-from landlab.components import FlowAccumulator
-from landlab.components import PrecipitationDistribution
-from landlab.components import StreamPowerEroder
+from landlab.components import (
+    FlowAccumulator,
+    PrecipitationDistribution,
+    StreamPowerEroder,
+)
 
 _THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 
