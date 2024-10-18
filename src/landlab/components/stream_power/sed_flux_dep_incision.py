@@ -6,6 +6,7 @@ import scipy.constants
 from landlab import Component
 from landlab import MissingKeyError
 from landlab.utils.decorators import make_return_array_immutable
+from landlab.utils.return_array import return_array_at_node                                                           
 
 
 class SedDepEroder(Component):
@@ -216,6 +217,7 @@ class SedDepEroder(Component):
         sediment_density=2700,
         fluid_density=1000,
         runoff_rate=1.0,
+        discharge_field="drainage_area",                                
         sed_dependency_type="generalized_humped",
         kappa_hump=13.683,
         nu_hump=1.13,
@@ -380,6 +382,8 @@ class SedDepEroder(Component):
         self._flooded_depths = flooded_depths
         self._pseudoimplicit_repeats = pseudoimplicit_repeats
 
+        self._A = return_array_at_node(grid, discharge_field)
+        #^added by AL, 18Oct2024
         self._link_S_with_trailing_blank = np.zeros(grid.number_of_links + 1)
         # ^needs to be filled with values in execution
         self._countactive_links = np.zeros_like(
@@ -824,10 +828,18 @@ class SedDepEroder(Component):
                 transport_capacities = np.sqrt(trp_diff * trp_diff * trp_diff)
                 shear_stress = shear_stress_prefactor_timesAparts * slopes_tothe07
                 shear_tothe_a = shear_stress**self._a
-
+                #ALL***: note that the timestep below is in SECONDS!
                 dt_this_step = dt_secs - internal_t
                 # ^timestep adjustment is made AFTER the dz calc
+                
                 node_vol_capacities = transport_capacities * dt_this_step
+                #ALL***: below, if we send sediment to vertical erosion because lateral
+                # erosion is running, do not initialize this as zeros. use the
+                # values sent to the component instead.
+                if "lateral_sediment__flux" in grid.at_node:
+                    sed_into_node = self._grid.at_node["lateral_sediment__flux"]
+                else:
+                    sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)                                                                       
 
                 sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
@@ -919,6 +931,11 @@ class SedDepEroder(Component):
                                     flooded_depths[i] += dz_here
                                 else:
                                     dz_here = -flood_depth
+                                    """
+                                    Adding/trying this on May 10, 2022. AL
+                                    to fix hole digging/weird deposition
+                                    """
+                                    dz_here = 0.0  
                                     vol_pass = height_excess * cell_area
                                     # ^bit cheeky?
                                     flooded_depths[i] = 0.0
@@ -929,6 +946,8 @@ class SedDepEroder(Component):
                             # timestep.
 
                         dz[i] -= dz_here
+                        #below is where sed_int_node is updated
+                                       
                         sed_into_node[flow_receiver[i]] += vol_pass
 
                 break_flag = True
@@ -974,7 +993,8 @@ class SedDepEroder(Component):
                 dt_this_step = dt_secs - internal_t
                 # ^timestep adjustment is made AFTER the dz calc
                 node_vol_capacities = transport_capacities * dt_this_step
-
+                #ALL: I don't need to change this sed_into_node bc I'll only use MPM
+                # version of this code. This is because MPM has a threshold, which i need.
                 sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self._cell_areas
@@ -1068,7 +1088,8 @@ class SedDepEroder(Component):
             grid.at_node["channel__depth"][:] = H
             grid.at_node["channel__discharge"][:] = node_Q
             grid.at_node["channel__bed_shear_stress"][:] = shear_stress
-
+        #ALL***: note that transport capacity is in m^3/s. See above for the
+        # conversion into volume by using a SECONDS to years time scale.
         grid.at_node["channel_sediment__volumetric_transport_capacity"][
             :
         ] = transport_capacities
