@@ -78,6 +78,7 @@ from .soil_moisture import SoilInfiltrationGreenAmpt
 from .soil_moisture import SoilMoisture
 from .space import Space
 from .space import SpaceLargeScaleEroder
+from .space import SpaceLateralEroder
 from .spatial_precip import SpatialPrecipitationDistribution
 from .species_evolution import SpeciesEvolver
 from .steepness_index import SteepnessFinder
@@ -166,6 +167,7 @@ COMPONENTS = [
     SoilInfiltrationGreenAmpt,
     Space,
     SpaceLargeScaleEroder,
+    SpaceLateralEroder,
     SpatialPrecipitationDistribution,
     SpeciesEvolver,
     SteepnessFinder,
