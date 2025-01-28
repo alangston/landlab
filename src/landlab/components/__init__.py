@@ -136,6 +136,7 @@ COMPONENTS = [
     LakeMapperBarnes,
     LandslideProbability,
     LateralEroder,
+    LateralErosionSedDep,
     LinearDiffuser,
     LinearDiffusionOverlandFlowRouter,
     ListricKinematicExtender,
