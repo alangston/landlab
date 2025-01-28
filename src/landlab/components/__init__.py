@@ -34,6 +34,7 @@ from .hand_calculator import HeightAboveDrainageCalculator
 from .lake_fill import LakeMapperBarnes
 from .landslides import LandslideProbability
 from .lateral_erosion import LateralEroder
+from .lateral_erosion import LateralErosionSedDep
 from .lithology import LithoLayers
 from .lithology import Lithology
 from .marine_sediment_transport import SimpleSubmarineDiffuser

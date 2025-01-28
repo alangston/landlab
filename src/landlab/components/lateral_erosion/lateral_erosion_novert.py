@@ -87,7 +87,7 @@ class LateralErosionSedDep(Component):
         Qs_prefactor = 3.5972042802486196e-7,    #from sedflux dep eroder
         Qs_power_onA = 0.6333333333333333,    #from sedflux dep eroder
     ):
-        super(ValleyWiden, self).__init__(grid)
+        super(LateralErosionSedDep, self).__init__(grid)
 
         assert isinstance(
             grid, RasterModelGrid
@@ -274,132 +274,133 @@ class LateralErosionSedDep(Component):
                     debug=0
                     #%%
                     if block_size[lat_node] > 0.0:
-                        #^ if block size >0.0, you are blocks, not bedrock
-                        tau_crit = block_size[lat_node]*self.g * (self.sed_density - self.fluid_density) * self.shields_thresh
-                        #calc, can blocks be transported?
-                        if channel__bed_shear_stress[i] > tau_crit:
-                            if debug3 and lat_node == 366:
-                                print(" ")
-                                print("depth_at_node", depth_at_node)
-                                print("lat_node", lat_node)
-                                print("blocks can transport")
-                                print("tau", channel__bed_shear_stress[i])
-                                print("taucrit", tau_crit)
-    #                            print(frog)
-                            #if blocks transported, do it.
-                            # volume of pile of stuff
-                            #may 10, 2022, changed this to the pile volume between the node that is downstream of 
-                                # the primary node and lateral node, not pile volume between primary and lateral. 
-                            pile_volume = (z[lat_node] - z[flowdirs[i]]) * grid.dx ** 2
-                            # below is the conversion of trans capacity into m^3/model time step
-                            transcap_here_ts = chan_trans_cap[i]*dt*self.sec_per_year
-                            avail_trans_cap = transcap_here_ts * (1.0-rel_sed_flux[i])
-                            if debug3 and lat_node == 366:
-                                print(" ")
-                                print("pile volume", pile_volume)
-                                print("trans cap here", chan_trans_cap[i])
-                                print("transcaphere_ts", transcap_here_ts)
-                                print("avail trans cap", avail_trans_cap)
-                                print("dt", dt)
-                            if avail_trans_cap >= pile_volume:
-                                #if all sediment from lateral erosion can be transported
-                                # by teh channel, send it all down stream
-                                """
-                                COMMENTED OUT LINE BELOW FOR TEST
-                                MAY 9, 2022, 3:10 PM
-                                """
-                                qs_in[flowdirs[i]] += pile_volume 
-                                if np.any(np.isnan(qs_in))==True:
-                                    print("we got a nan in qs_in, line 288")
-                                    print("time = ", precip.elapsed_time)
-                                    toc=time.time()
-                                    print("elapsed time = ", toc-tic)
-                                    print(frog)
-                                # then calculate how much elevation will be lost on teh lateral node
-                                # from that downstream transport
-                                #may 10, 2022, changed this to the elevation diff between the node that is downstream of 
-                                # the primary node and lateral node, not elev diff between primary and lateral. 
-                                # plus half mm to prevent hole digging
-                                dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node] + 0.0005
-                                #finally, reset block size to reflect fresh bedrock
-                                block_size[lat_node] = 0.0
-                                status_lat_nodes[lat_node] = 5
-                                if debug3 and lat_node == 438:
-                                    print("entire pile transported")
-                            elif avail_trans_cap < pile_volume and rel_sed_flux[i] < 1:
-                                #**Note here I found that if avail trans capacity is 0,
-                                # model will still go through this loop. This is not a problem
-                                # except it's inefficient. I fixed it by addign the and
-                                #statment above.
-                                #use all available trans capacity to move as much
-                                # pile as possible
-                                # note I use negative availtranscap to make dzlat a negative number
-                                # may 10, 2022. plus half mm to prevent hole digging
-                                dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, (z[flowdirs[i]] - z[lat_node] +0.0005))
-                                # ^ this will give the elevation that can be removed from 
-                                # the pile of stuff that is the lateral node.
-                                """
-                                COMMENTED OUT LINE BELOW FOR TEST
-                                MAY 9, 2022, 3:10 PM
-                                """
-                                qs_in[flowdirs[i]] += avail_trans_cap
-                                if np.any(np.isnan(qs_in))==True:
-                                    print("we got a nan in qs_in, line 316")
-                                    print("time = ", precip.elapsed_time)
-                                    toc=time.time()
-                                    print("elapsed time = ", toc-tic)
-                                    print(frog)
-                                # ^ send the sediment downstream. this is volume of 
-                                # sediment  in m**3(no time scale in here, but this
-                                # is volume downstream over this timestep, dt)
-                                status_lat_nodes[lat_node] = 4
-                                if debug3 and lat_node == 438:
-                                    print("entire pile NOT transported")
-                            if debug3 and lat_node == 438:
-                                print(" ")
-                                print("downstream node", flowdirs[i])
-                                print("qs_in[flowdirs[i]]", qs_in[flowdirs[i]])
-                                print("transcap", transcap_here_ts)
-                                print("relsedflux", rel_sed_flux[i])
-                                print("avail_trans_cap", avail_trans_cap)
-                                print("pile_vol", pile_volume)
-                                print("dzlat[latnode]", dzlat_ts[lat_node])
-                                print("z[latnode]",z[lat_node])
-                                print("z[i]",z[i])
-#                                print(frog)
+                        pass
+#                         #^ if block size >0.0, you are blocks, not bedrock
+#                         tau_crit = block_size[lat_node]*self.g * (self.sed_density - self.fluid_density) * self.shields_thresh
+#                         #calc, can blocks be transported?
+#                         if channel__bed_shear_stress[i] > tau_crit:
+#                             if debug3 and lat_node == 366:
+#                                 print(" ")
+#                                 print("depth_at_node", depth_at_node)
+#                                 print("lat_node", lat_node)
+#                                 print("blocks can transport")
+#                                 print("tau", channel__bed_shear_stress[i])
+#                                 print("taucrit", tau_crit)
+#     #                            print(frog)
+#                             #if blocks transported, do it.
+#                             # volume of pile of stuff
+#                             #may 10, 2022, changed this to the pile volume between the node that is downstream of 
+#                                 # the primary node and lateral node, not pile volume between primary and lateral. 
+#                             pile_volume = (z[lat_node] - z[flowdirs[i]]) * grid.dx ** 2
+#                             # below is the conversion of trans capacity into m^3/model time step
+#                             transcap_here_ts = chan_trans_cap[i]*dt*self.sec_per_year
+#                             avail_trans_cap = transcap_here_ts * (1.0-rel_sed_flux[i])
+#                             if debug3 and lat_node == 366:
+#                                 print(" ")
+#                                 print("pile volume", pile_volume)
+#                                 print("trans cap here", chan_trans_cap[i])
+#                                 print("transcaphere_ts", transcap_here_ts)
+#                                 print("avail trans cap", avail_trans_cap)
+#                                 print("dt", dt)
+#                             if avail_trans_cap >= pile_volume:
+#                                 #if all sediment from lateral erosion can be transported
+#                                 # by teh channel, send it all down stream
+#                                 """
+#                                 COMMENTED OUT LINE BELOW FOR TEST
+#                                 MAY 9, 2022, 3:10 PM
+#                                 """
+#                                 qs_in[flowdirs[i]] += pile_volume 
+#                                 if np.any(np.isnan(qs_in))==True:
+#                                     print("we got a nan in qs_in, line 288")
+#                                     print("time = ", precip.elapsed_time)
+#                                     toc=time.time()
+#                                     print("elapsed time = ", toc-tic)
+#                                     print(frog)
+#                                 # then calculate how much elevation will be lost on teh lateral node
+#                                 # from that downstream transport
+#                                 #may 10, 2022, changed this to the elevation diff between the node that is downstream of 
+#                                 # the primary node and lateral node, not elev diff between primary and lateral. 
+#                                 # plus half mm to prevent hole digging
+#                                 dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node] + 0.0005
+#                                 #finally, reset block size to reflect fresh bedrock
+#                                 block_size[lat_node] = 0.0
+#                                 status_lat_nodes[lat_node] = 5
+#                                 if debug3 and lat_node == 438:
+#                                     print("entire pile transported")
+#                             elif avail_trans_cap < pile_volume and rel_sed_flux[i] < 1:
+#                                 #**Note here I found that if avail trans capacity is 0,
+#                                 # model will still go through this loop. This is not a problem
+#                                 # except it's inefficient. I fixed it by addign the and
+#                                 #statment above.
+#                                 #use all available trans capacity to move as much
+#                                 # pile as possible
+#                                 # note I use negative availtranscap to make dzlat a negative number
+#                                 # may 10, 2022. plus half mm to prevent hole digging
+#                                 dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, (z[flowdirs[i]] - z[lat_node] +0.0005))
+#                                 # ^ this will give the elevation that can be removed from 
+#                                 # the pile of stuff that is the lateral node.
+#                                 """
+#                                 COMMENTED OUT LINE BELOW FOR TEST
+#                                 MAY 9, 2022, 3:10 PM
+#                                 """
+#                                 qs_in[flowdirs[i]] += avail_trans_cap
+#                                 if np.any(np.isnan(qs_in))==True:
+#                                     print("we got a nan in qs_in, line 316")
+#                                     print("time = ", precip.elapsed_time)
+#                                     toc=time.time()
+#                                     print("elapsed time = ", toc-tic)
+#                                     print(frog)
+#                                 # ^ send the sediment downstream. this is volume of 
+#                                 # sediment  in m**3(no time scale in here, but this
+#                                 # is volume downstream over this timestep, dt)
+#                                 status_lat_nodes[lat_node] = 4
+#                                 if debug3 and lat_node == 438:
+#                                     print("entire pile NOT transported")
+#                             if debug3 and lat_node == 438:
+#                                 print(" ")
+#                                 print("downstream node", flowdirs[i])
+#                                 print("qs_in[flowdirs[i]]", qs_in[flowdirs[i]])
+#                                 print("transcap", transcap_here_ts)
+#                                 print("relsedflux", rel_sed_flux[i])
+#                                 print("avail_trans_cap", avail_trans_cap)
+#                                 print("pile_vol", pile_volume)
+#                                 print("dzlat[latnode]", dzlat_ts[lat_node])
+#                                 print("z[latnode]",z[lat_node])
+#                                 print("z[i]",z[i])
+# #                                print(frog)
                         #if blocks can't be transported: calc Elat, track undercutting
-                        else:    # below is for blocks that can't be transported
-                            petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
-                            vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
-                            vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
-                            # vol_diff is the volume that must be eroded from lat_node so that its
-                            # elevation is the same as node downstream of primary node
-    #                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
-                            voldiff = depth_at_node[i] * grid.dx ** 2
-                            # below, send sediment downstream, units of volume
-                            """
-                            May11, remove qs_in
-                            """
-                            qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
-                            if np.any(np.isnan(qs_in))==True:
-                                print("we got a nan in qs_in, line 347")
-                                print("time = ", precip.elapsed_time)
-                                toc=time.time()
-                                print("elapsed time = ", toc-tic)
-                                print(frog)
-                            status_lat_nodes[lat_node] = 3
-                            if debug3 and lat_node == 438:
-                                print("blocks can't transport")
-                            #*******WILL VALLEY WALL COLLAPSE again?
-                            if vol_lat[lat_node] >= voldiff:
-                                dzlat_ts[lat_node] = depth_at_node[i] * -1.0
-                                # ^ Change elevation of lateral node by the length undercut
-                                vol_lat[lat_node] = 0.0
-                                # ^after the lateral node is eroded, reset its volume eroded to
-                                # zero
-                                ####HAVE ALL BLOCKS BEEN ERODED? compare lat and primary node within 5mm
-                                if np.isclose(z[lat_node], z[i], atol=0.005):
-                                    block_size[lat_node] = 0.0
+    #                     else:    # below is for blocks that can't be transported
+    #                         petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
+    #                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
+    #                         vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
+    #                         # vol_diff is the volume that must be eroded from lat_node so that its
+    #                         # elevation is the same as node downstream of primary node
+    # #                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
+    #                         voldiff = depth_at_node[i] * grid.dx ** 2
+    #                         # below, send sediment downstream, units of volume
+    #                         """
+    #                         May11, remove qs_in
+    #                         """
+    #                         qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
+    #                         if np.any(np.isnan(qs_in))==True:
+    #                             print("we got a nan in qs_in, line 347")
+    #                             print("time = ", precip.elapsed_time)
+    #                             toc=time.time()
+    #                             print("elapsed time = ", toc-tic)
+    #                             print(frog)
+    #                         status_lat_nodes[lat_node] = 3
+    #                         if debug3 and lat_node == 438:
+    #                             print("blocks can't transport")
+    #                         #*******WILL VALLEY WALL COLLAPSE again?
+    #                         if vol_lat[lat_node] >= voldiff:
+    #                             dzlat_ts[lat_node] = depth_at_node[i] * -1.0
+    #                             # ^ Change elevation of lateral node by the length undercut
+    #                             vol_lat[lat_node] = 0.0
+    #                             # ^after the lateral node is eroded, reset its volume eroded to
+    #                             # zero
+    #                             ####HAVE ALL BLOCKS BEEN ERODED? compare lat and primary node within 5mm
+    #                             if np.isclose(z[lat_node], z[i], atol=0.005):
+    #                                 block_size[lat_node] = 0.0
 #%%
                     else:    # below is for fresh bedrock valley walls
                         petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
