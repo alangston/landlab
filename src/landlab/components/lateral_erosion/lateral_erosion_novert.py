@@ -457,7 +457,7 @@ class LateralErosionSedDep(Component):
         #^ AL: this only keeps track of cumulative lateral erosion at each cell.
         
         #***830Jan2025: below is where I change the grid sediment__influx to include lateral sed flux
-        grid.at_node["sediment__influx"][:] += lat_sed_influx
+        self.grid.at_node["lateral_sediment__influx"][:] = lat_sed_influx
         if "dzlat_ts" in grid.at_node:
             grid.at_node["dzlat_ts"][:] = dzlat_ts
         #**AL: 11/18/21: added the above few lines to save lateral erosion per timestep

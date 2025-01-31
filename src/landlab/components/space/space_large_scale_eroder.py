@@ -555,7 +555,14 @@ class SpaceLargeScaleEroder(Component):
         self._sed_erosion_term[flooded_nodes] = 0.0
         self._br_erosion_term[flooded_nodes] = 0.0
 
-        #self.sediment_influx[:] = 0
+        if "lateral_sediment__influx" in self.grid.at_node:
+            self.sediment_influx[:] = self.grid.at_node["lateral_sediment__influx"]
+            # print("in space, lateral sedflux detected")
+            # print("max lateral sedflux = ", max(self.sediment_influx))
+        else:
+            self.sediment_influx[:] = 0
+            # print("in space, NO lateral sedflux detected")
+            # print("max no lateral  sedflux = ", max(self.sediment_influx))
 
         K_sed_vector = np.broadcast_to(self._K_sed, self._q.shape)
 
