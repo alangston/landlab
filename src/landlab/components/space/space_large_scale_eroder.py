@@ -525,7 +525,6 @@ class SpaceLargeScaleEroder(Component):
 
     def run_one_step_basic(self, dt=10):
         node_status = self.grid.status_at_node
-
         z = self.grid.at_node["topographic__elevation"]
         br = self.grid.at_node["bedrock__elevation"]
         H = self.grid.at_node["soil__depth"]
@@ -556,7 +555,7 @@ class SpaceLargeScaleEroder(Component):
         self._sed_erosion_term[flooded_nodes] = 0.0
         self._br_erosion_term[flooded_nodes] = 0.0
 
-        self.sediment_influx[:] = 0
+        #self.sediment_influx[:] = 0
 
         K_sed_vector = np.broadcast_to(self._K_sed, self._q.shape)
 

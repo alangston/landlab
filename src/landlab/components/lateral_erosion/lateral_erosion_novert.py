@@ -7,6 +7,7 @@ ALangston
 """
 
 import numpy as np
+import matplotlib.pyplot as plt  # For plotting results; optional
 
 from landlab import Component, RasterModelGrid
 from landlab.components.flow_accum import FlowAccumulator
@@ -14,6 +15,7 @@ from landlab.components.flow_accum import FlowAccumulator
 from landlab.components.lateral_erosion.node_finder import node_finder
 from landlab.utils.return_array import return_array_at_node
 
+from landlab import imshow_grid  # For plotting results; optional
 
 # Hard coded constants
 cfl_cond = 0.3  # CFL timestep condition
@@ -76,16 +78,6 @@ class LateralErosionSedDep(Component):
         discharge_field="surface_water__discharge",
         solver="basic",
         flow_accumulator=None,
-        g=9.81,
-        sed_density=2700,
-        fluid_density=1000,
-        shields_thresh=0.05,
-        sec_per_year=31557600.0,
-        b_sde = 0.5,    #b_sp from sedflux dep eroder
-        Qs_thresh_prefactor = 3.668127525963118e-8,    #from sedflux dep eroder
-        Qs_power_onAthresh = 0.33333333333333,    #from sedflux dep eroder
-        Qs_prefactor = 3.5972042802486196e-7,    #from sedflux dep eroder
-        Qs_power_onA = 0.6333333333333333,    #from sedflux dep eroder
     ):
         super(LateralErosionSedDep, self).__init__(grid)
 
@@ -137,12 +129,10 @@ class LateralErosionSedDep(Component):
         else:
             self._vol_lat = grid.add_zeros("volume__lateral_erosion", at="node")
 
-        if "inlet_sediment__flux" in grid.at_node:
-            self._qs_in_inlet = grid.at_node["inlet_sediment__flux"]
-        # if "lateral_sediment__flux" in grid.at_node:
-        #     self._qs_in = grid.at_node["lateral_sediment__flux"]
-        # else:
-        #     self._qs_in = grid.add_zeros("lateral_sediment__flux", at="node")
+        if "lateral_sediment__influx" in grid.at_node:
+             self._lat_sed_influx = grid.at_node["lateral_sediment__influx"]
+        else:
+             self._lat_sed_influx = grid.add_zeros("lateral_sediment__influx", at="node")
 
         if "lateral_erosion__depth_increment" in grid.at_node:
             self._dzlat = grid.at_node["lateral_erosion__depth_cum"]
@@ -170,9 +160,6 @@ class LateralErosionSedDep(Component):
         elif solver == "adaptive":
             self.run_one_step = self.run_one_step_adaptive
         self._Kl = Kl  # can be overwritten with spatially variable
-
-        self.sed_density = sed_density
-        self.sec_per_year = sec_per_year
         self._Dchar = Dchar
 
 
@@ -180,6 +167,8 @@ class LateralErosionSedDep(Component):
         # for arrays of Kv. Checks that length of Kv array is good.
         self._Kl = np.ones(self._grid.number_of_nodes, dtype=float) * Kl
         self._A = return_array_at_node(grid, discharge_field)
+        self._slope = grid.at_node["topographic__steepest_slope"]
+
         ###^^^***** april 25, 2022 above from stream_power AND my new additions
         # to sed_flux_dependent_incision
 
@@ -191,7 +180,7 @@ class LateralErosionSedDep(Component):
         ----------
         dt : float
             Model timestep [T]
-        qs_in/grid.at_node["lateral_sediment__flux"] : array
+        qs_in/grid.at_node["lateral_sediment__influx"] : array
             qs_in will be in UNITS of m**3/time step. THis is the same
             units as needed for vertical incsion
 
@@ -207,42 +196,33 @@ class LateralErosionSedDep(Component):
         """
         # depth_at_node = self._grid.at_node["channel__depth"]
             # water depth in meters, needed for lateral erosion calc
-        depth_at_node = wid_coeff * (self._A) ** wid_exp
+        # depth_at_node = wid_coeff * (self._A) ** wid_exp
+        depth_at_node = self.calc_implied_depth(grain_diameter=0.2)
+
         # depth_nans = np.where(np.isnan(self.grid.at_node["channel__depth"])==True)
         # depth_at_node[depth_nans] = 0.0
         
         block_size = self._grid.at_node["block_size"]
         Dchar = self._Dchar
 
+        # clear qsin for next loop
 
-
+        lat_sed_influx = self._lat_sed_influx[:] 
+        lat_sed_influx[:] = 0.0
         debug7 = 0
         if debug7:
-            print("qs_in", qs_in)
-        # clear qsin for next loop
-        if "inlet_sediment__flux" in grid.at_node:
-            # qs_in = np.copy(self._grid.at_node["inlet_sediment__flux"])
-            qs_in = np.copy(self._qs_in_inlet)
-        else:
-            qs_in = grid.add_zeros("node", "lateral_sediment__flux", clobber=True)
+            print("lat_sed_influx", lat_sed_influx)
         lat_nodes = np.zeros(grid.number_of_nodes, dtype=int)
-        status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node", clobber=True)#, noclobber=False)
+        # status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node", clobber=True)#, noclobber=False)
+        status_lat_nodes = self._status_lat_nodes
         dzlat_ts = np.zeros(grid.number_of_nodes, dtype=float)
         vol_lat_dt = np.zeros(grid.number_of_nodes)
         node_A = self._A
-        #4/25/2022 AL added thsi above. 
-        # I believe this works now along with added stuff on line 358
-        # node_A = grid.at_node["surface_water__discharge"]
-        # ^ AL Dec 31: change using drainage area to using surface water discharge
-        # that way if there is runoff added to flow accumulator, then lateral eroder will
-        # pick it up. If no runoff is added, then surface water discharge is the same as 
-        # drainage area. This is how I'm dealing with keeping K_sp for vertical adn
-        # K_lat eroding at the same OOM with changign runoff rate in teh vertical 
-        # component
+        slope = self._slope
         # flow__upstream_node_order is node array contianing downstream to
         # upstream order list of node ids
         s = grid.at_node["flow__upstream_node_order"]
-        max_slopes = grid.at_node["topographic__steepest_slope"]
+        # slope = grid.at_node["topographic__steepest_slope"]
         flowdirs = grid.at_node["flow__receiver_node"]
         #^ALL 7/282020: this is from sed_flux_dep_incision.py
         z = grid.at_node["topographic__elevation"]
@@ -253,7 +233,7 @@ class LateralErosionSedDep(Component):
         dwnst_nodes = interior_s.copy()
         # reverse list so we go from upstream to down stream
         dwnst_nodes = dwnst_nodes[::-1]
-        max_slopes[:] = max_slopes.clip(0)
+        slope[:] = slope.clip(0)
         """
         #ALL***: below is only for finding the lateral node
         """
@@ -309,9 +289,9 @@ class LateralErosionSedDep(Component):
 #                                 COMMENTED OUT LINE BELOW FOR TEST
 #                                 MAY 9, 2022, 3:10 PM
 #                                 """
-#                                 qs_in[flowdirs[i]] += pile_volume 
-#                                 if np.any(np.isnan(qs_in))==True:
-#                                     print("we got a nan in qs_in, line 288")
+#                                 lat_sed_influx[flowdirs[i]] += pile_volume 
+#                                 if np.any(np.isnan(lat_sed_influx))==True:
+#                                     print("we got a nan in lat_sed_influx, line 288")
 #                                     print("time = ", precip.elapsed_time)
 #                                     toc=time.time()
 #                                     print("elapsed time = ", toc-tic)
@@ -343,9 +323,9 @@ class LateralErosionSedDep(Component):
 #                                 COMMENTED OUT LINE BELOW FOR TEST
 #                                 MAY 9, 2022, 3:10 PM
 #                                 """
-#                                 qs_in[flowdirs[i]] += avail_trans_cap
-#                                 if np.any(np.isnan(qs_in))==True:
-#                                     print("we got a nan in qs_in, line 316")
+#                                 lat_sed_influx[flowdirs[i]] += avail_trans_cap
+#                                 if np.any(np.isnan(lat_sed_influx))==True:
+#                                     print("we got a nan in lat_sed_influx, line 316")
 #                                     print("time = ", precip.elapsed_time)
 #                                     toc=time.time()
 #                                     print("elapsed time = ", toc-tic)
@@ -359,7 +339,7 @@ class LateralErosionSedDep(Component):
 #                             if debug3 and lat_node == 438:
 #                                 print(" ")
 #                                 print("downstream node", flowdirs[i])
-#                                 print("qs_in[flowdirs[i]]", qs_in[flowdirs[i]])
+#                                 print("lat_sed_influx[flowdirs[i]]", lat_sed_influx[flowdirs[i]])
 #                                 print("transcap", transcap_here_ts)
 #                                 print("relsedflux", rel_sed_flux[i])
 #                                 print("avail_trans_cap", avail_trans_cap)
@@ -370,7 +350,7 @@ class LateralErosionSedDep(Component):
 # #                                print(frog)
                         #if blocks can't be transported: calc Elat, track undercutting
     #                     else:    # below is for blocks that can't be transported
-    #                         petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
+    #                         petlat = -Kl[i] * node_A[i] * slope[i] * inv_rad_curv
     #                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
     #                         vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
     #                         # vol_diff is the volume that must be eroded from lat_node so that its
@@ -379,11 +359,11 @@ class LateralErosionSedDep(Component):
     #                         voldiff = depth_at_node[i] * grid.dx ** 2
     #                         # below, send sediment downstream, units of volume
     #                         """
-    #                         May11, remove qs_in
+    #                         May11, remove lat_sed_influx
     #                         """
-    #                         qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
-    #                         if np.any(np.isnan(qs_in))==True:
-    #                             print("we got a nan in qs_in, line 347")
+    #                         lat_sed_influx[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
+    #                         if np.any(np.isnan(lat_sed_influx))==True:
+    #                             print("we got a nan in lat_sed_influx, line 347")
     #                             print("time = ", precip.elapsed_time)
     #                             toc=time.time()
     #                             print("elapsed time = ", toc-tic)
@@ -403,7 +383,7 @@ class LateralErosionSedDep(Component):
     #                                 block_size[lat_node] = 0.0
 #%%
                     else:    # below is for fresh bedrock valley walls
-                        petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
+                        petlat = -Kl[i] * node_A[i] * slope[i] * inv_rad_curv
                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
                         vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
 
@@ -423,15 +403,32 @@ class LateralErosionSedDep(Component):
 
                         status_lat_nodes[lat_node] = 1
                         #^node status=1 means that now this br valley wall has experienced some erosion
-                        if debug:
+                        debug=0
+                        if debug and i==130:
+                            print("i", i)
+                            print("lat_node", lat_node)
+                            print("z[i]", z[i])
+                            print("z[lat_node]", z[lat_node])
+                            print("z[flowdirs[i]]",z[flowdirs[i]])
                             print("petlat_lateral", petlat*dt)
+                            print("vol_diff", voldiff)
+                            print("vol_lat[lat_node]", vol_lat[lat_node])
+                            water_depth = self.calc_implied_depth(grain_diameter=0.2)
+                            print("water_depth", water_depth[i])
+                            print("depth at node", depth_at_node[i])
+                            print("slope at node", slope[i])
+                            print(" ")
+                            print(frog)
                         #*******WILL VALLEY WALL COLLAPSE for the first time?
                         if vol_lat[lat_node] >= voldiff:
                             #ALL***: ^now this line is just telling me: will this
                             # valley wall collapse?
                             #*****************************
-                            #SOMETHING FUNKY GOING ON BELOW! CHECK!
-                            dzlat_ts[lat_node] = depth_at_node[i] * -1.0
+
+                            # dzlat_ts[lat_node] = depth_at_node[i] * -1.0
+                            # dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node]
+                            dzlat_ts[lat_node] = z[i] - z[lat_node]
+
                             # ^ Change elevation of lateral node by the height of the undercut
                             vol_lat[lat_node] = 0.0
                             # ^after the lateral node is eroded, reset its volume eroded to
@@ -439,184 +436,76 @@ class LateralErosionSedDep(Component):
                             ####change block size status from bedrock to blocks
                             block_size[lat_node] = Dchar
                             status_lat_nodes[lat_node] = 2
+                            # print("dzlat_ts", dzlat_ts[lat_node])
+                            # print(" ")
+                            # print("valley collapse at node: ", i)
+                            # water_depth = self.calc_implied_depth(grain_diameter=0.5)
+                            # print("water_depth", water_depth[i])
+                            # print("depth at node", depth_at_node[i])
+                            # print("slope at node", slope[i])
+
+                            # print(frog)
                         # send sediment downstream. for bedrock erosion only
                         """
-                        May11, remove qs_in
+                        May11, remove lat_sed_influx
                         """
-                        qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
-                        if np.any(np.isnan(qs_in))==True:
-                                print("we got a nan in qs_in, line 397")
-                                print(" ")
-                                print("downstream node", flowdirs[i])
-                                print("qs_in[flowdirs[i]]", qs_in[flowdirs[i]])
-                                print("petlat", petlat)
-                                print("depth_at_nodes", depth_at_node[i])
-                                print("transcap", transcap_here_ts)
-                                print("relsedflux", rel_sed_flux[i])
-                                print("avail_trans_cap", avail_trans_cap)
-                                print("pile_vol", pile_volume)
-                                print("dzlat[latnode]", dzlat_ts[lat_node])
-                                print("z[latnode]",z[lat_node])
-                                print("z[i]",z[i])
-                                print(" ")
-                                print("pile volume", pile_volume)
-                                print("trans cap here", chan_trans_cap[i])
-                                print("transcaphere_ts", transcap_here_ts)
-                                print("avail trans cap", avail_trans_cap)
-                                print("dt", dt)
-                                print("time = ", precip.elapsed_time)
-                                toc=time.time()
-                                print("elapsed time = ", toc-tic)
+                        lat_sed_influx[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
+                        if np.any(np.isnan(lat_sed_influx))==True:
+                                print("we got a nan in lat_sed_influx, line 397")
 
-                                print(frog)
-#                        print("qs_in[flowdirs[i]] AFTER", qs_in[flowdirs[i]])
-#        qs[:] = qs_in
-        debug2=0
-        if debug2:
-            print(" ")
-#            print("qs_in", qs_in)
-#            print("status latnodes", status_lat_nodes)
-            print("dzlat_ts", dzlat_ts)
-#            print(frog)
-        
-        #All***: ^ I don't exactly remember what that is for/why.
-        # this loop determines if enough lateral erosion has happened to change
-        # the height of the neighbor node.
-#        for i in dwnst_nodes:
-#            lat_node = lat_nodes[i]
-#            depth_at_node[i]
-#            if lat_node > 0:  # greater than zero now bc inactive neighbors are value -1
-#                if z[lat_node] > z[i]:
-#                    # vol_diff is the volume that must be eroded from lat_node so that its
-#                    # elevation is the same as node downstream of primary node
-#                    # UC model: this would represent undercutting (the water height at
-#                    # node i), slumping, and instant removal.
-#                    if UC == 1:
-#                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
-#                    # TB model: entire lat node must be eroded before lateral erosion
-#                    # occurs
-#                    if TB == 1:
-#                        voldiff = (z[lat_node] - z[flowdirs[i]]) * grid.dx ** 2
-#                    # if the total volume eroded from lat_node is greater than the volume
-#                    # needed to be removed to make node equal elevation,
-#                    # then instantaneously remove this height from lat node. already has
-#                    # timestep in it
-#                    if vol_lat[lat_node] >= voldiff:
-#                        self._dzlat[lat_node] = z[flowdirs[i]] - z[lat_node]  # -0.001
-#                        # after the lateral node is eroded, reset its volume eroded to
-#                        # zero
-#                        vol_lat[lat_node] = 0.0
         grid.at_node["lateral_erosion__depth_cum"][:] += dzlat_ts
         #^ AL: this only keeps track of cumulative lateral erosion at each cell.
-
+        
+        #***830Jan2025: below is where I change the grid sediment__influx to include lateral sed flux
+        grid.at_node["sediment__influx"][:] += lat_sed_influx
         if "dzlat_ts" in grid.at_node:
             grid.at_node["dzlat_ts"][:] = dzlat_ts
         #**AL: 11/18/21: added the above few lines to save lateral erosion per timestep
         # change height of landscape by just removing laterally eroded stuff.
-        z[:] += dzlat_ts
-#        print("z in lat", z)
+        z_br[:] += dzlat_ts
+        z[:] = z_br[:] + sed_depth[:]
+
         return grid
 
 
-"""
-Below, this is from Vanessa's gravel bedrock eroder. Just giving it a try.'
-"""
-
-def calc_implied_depth(self, grain_diameter=0.01):
-    """Utility function that calculates and returns water depth implied by
-    slope and grain diameter, using Wickert & Schildgen (2019) equation 8.
-
-    The equation is::
-
-        h = ((rho_s - rho / rho)) * (1 + epsilon) * tau_c * (D / S)
-
-    where the factors on the right are sediment and water density, excess
-    shear-stress factor, critical Shields stress, grain diameter, and slope
-    gradient. Here the prefactor on ``D/S`` assumes sediment density of 2650 kg/m3,
-    water density of 1000 kg/m3, shear-stress factor of 0.2, and critical
-    Shields stress of 0.0495, giving a value of 0.09801.
-
-    Examples
-    --------
-    >>> from landlab import RasterModelGrid
-    >>> from landlab.components import FlowAccumulator
-    >>> grid = RasterModelGrid((3, 3), xy_spacing=1000.0)
-    >>> elev = grid.add_zeros("topographic__elevation", at="node")
-    >>> elev[3:] = 10.0
-    >>> sed = grid.add_zeros("soil__depth", at="node")
-    >>> sed[3:] = 100.0
-    >>> fa = FlowAccumulator(grid)
-    >>> fa.run_one_step()
-    >>> eroder = GravelBedrockEroder(grid)
-    >>> water_depth = eroder.calc_implied_depth(grain_diameter=0.01)
-    >>> int(water_depth[4] * 1000)
-    98
     """
-    depth_factor = 0.09801
-    depth = np.zeros(self._grid.number_of_nodes)
-    nonzero_slope = self._slope > 0.0
-    depth[nonzero_slope] = (
-        depth_factor * grain_diameter / self._slope[nonzero_slope]
-    )
-    return depth
-
-# def calc_new_transport_capacities(self, grid, Dchar):
-#     """
-#     Below is using model outputs to calculate transport capacities. I need this to calculate
-#     different transport capacities for different grain sizes. 
-#     the line numbers below refer to places in teh sed_flux_dep_incision code that 
-#     do those calculations. 
-#     """
-#     # line 512 from SedDepEroder
-#     shields_thresh = self.shields_thresh
-#     g = self.g
-#     sed_density = self.sed_density
-#     fluid_density = self.fluid_density
-#     Qs_thresh_prefactor = self._Qs_thresh_prefactor
-#     Qs_power_onAthresh = self._Qs_power_onAthresh
-#     Qs_power_onA = self._Qs_power_onA
-#     Qs_prefactor = self._Qs_prefactor
-#     b_sde = self._b_sde
-#     runoff_rate = grid.at_node["water__unit_flux_in"]
-#     # print("Dchar", Dchar)
-#     # print("g", g)
-#     # print("runoff rate", runoff_rate)
-#     thresh_from_Dchar = (
-#         shields_thresh
-#         * g
-#         * (sed_density - fluid_density)
-#         * Dchar
-#     )
-#     # line 777 from SedDepEroder    
-#     node_A = grid.at_node["drainage_area"]
-#     node_A = grid.at_node["surface_water__discharge"]
-
-#     node_S = grid.at_node["topographic__steepest_slope"]
-#     transport_capacities_thresh = (
-#     thresh_from_Dchar
-#     * Qs_thresh_prefactor
-#     * runoff_rate ** (0.66667 * b_sde)
-#     * node_A**Qs_power_onAthresh
-#     )
-#     #line 791 from SedDepEroder
-#     transport_capacity_prefactor_withA = (
-#     Qs_prefactor
-#     * runoff_rate ** (0.6 + b_sde / 15.0)
-#     * node_A**Qs_power_onA
-#     )
+    Below, this is from Vanessa's gravel bedrock eroder. Just giving it a try.'
+    """
     
-#     #line 812 from SedDepEroder
-#     downward_slopes = node_S.clip(0.0)
-#     slopes_tothe07 = downward_slopes**0.7
-#     transport_capacities_S = (
-#     transport_capacity_prefactor_withA * slopes_tothe07
-#     )
-#     trp_diff = (transport_capacities_S - transport_capacities_thresh).clip(
-#     0.0
-#     )
-#     # print("transcap prefactor with A", transport_capacity_prefactor_withA)
-#     # print("transport_capacities_thresh", transport_capacities_thresh)
-#     # print("trpdiff", trp_diff)
-#     # print(frog)
-#     transport_capacities = np.sqrt(trp_diff * trp_diff * trp_diff)
-#     return transport_capacities
+    def calc_implied_depth(self, grain_diameter=0.01):
+        """Utility function that calculates and returns water depth implied by
+        slope and grain diameter, using Wickert & Schildgen (2019) equation 8.
+    
+        The equation is::
+    
+            h = ((rho_s - rho / rho)) * (1 + epsilon) * tau_c * (D / S)
+    
+        where the factors on the right are sediment and water density, excess
+        shear-stress factor, critical Shields stress, grain diameter, and slope
+        gradient. Here the prefactor on ``D/S`` assumes sediment density of 2650 kg/m3,
+        water density of 1000 kg/m3, shear-stress factor of 0.2, and critical
+        Shields stress of 0.0495, giving a value of 0.09801.
+    
+        Examples
+        --------
+        >>> from landlab import RasterModelGrid
+        >>> from landlab.components import FlowAccumulator
+        >>> grid = RasterModelGrid((3, 3), xy_spacing=1000.0)
+        >>> elev = grid.add_zeros("topographic__elevation", at="node")
+        >>> elev[3:] = 10.0
+        >>> sed = grid.add_zeros("soil__depth", at="node")
+        >>> sed[3:] = 100.0
+        >>> fa = FlowAccumulator(grid)
+        >>> fa.run_one_step()
+        >>> eroder = GravelBedrockEroder(grid)
+        >>> water_depth = eroder.calc_implied_depth(grain_diameter=0.01)
+        >>> int(water_depth[4] * 1000)
+        98
+        """
+        depth_factor = 0.09801
+        depth = np.zeros(self._grid.number_of_nodes)
+        nonzero_slope = self._slope > 0.0
+        depth[nonzero_slope] = (
+            depth_factor * grain_diameter / self._slope[nonzero_slope]
+        )
+        return depth
