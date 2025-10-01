@@ -436,9 +436,10 @@ class LateralErosionSedDep(Component):
                             ####change block size status from bedrock to blocks
                             block_size[lat_node] = Dchar
                             status_lat_nodes[lat_node] = 2
-                            # print("dzlat_ts", dzlat_ts[lat_node])
-                            # print(" ")
-                            # print("valley collapse at node: ", i)
+                            #print("dzlat_ts", dzlat_ts[lat_node])
+                            #print(" ")
+                            #print("valley collapse at node: ", i)
+                            #print("discharge = ", max(node_A))
                             # water_depth = self.calc_implied_depth(grain_diameter=0.5)
                             # print("water_depth", water_depth[i])
                             # print("depth at node", depth_at_node[i])
@@ -461,9 +462,12 @@ class LateralErosionSedDep(Component):
         if "dzlat_ts" in grid.at_node:
             grid.at_node["dzlat_ts"][:] = dzlat_ts
         #**AL: 11/18/21: added the above few lines to save lateral erosion per timestep
+        
         # change height of landscape by just removing laterally eroded stuff.
-        z_br[:] += dzlat_ts
-        z[:] = z_br[:] + sed_depth[:]
+        #z_br[:] += dzlat_ts
+        #z[:] = z_br[:] + sed_depth[:]
+        #1October2025. removing sediment as well as bedrock.
+        z[:] += dzlat_ts
 
         return grid
 
