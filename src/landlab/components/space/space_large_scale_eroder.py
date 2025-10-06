@@ -557,8 +557,8 @@ class SpaceLargeScaleEroder(Component):
 
         if "lateral_sediment__influx" in self.grid.at_node:
             self.sediment_influx[:] = self.grid.at_node["lateral_sediment__influx"]
-            # print("in space, lateral sedflux detected")
-            # print("max lateral sedflux = ", max(self.sediment_influx))
+            #print("in space, lateral sedflux detected")
+            #print("max lateral sedflux = ", max(self.sediment_influx))
         else:
             self.sediment_influx[:] = 0
             # print("in space, NO lateral sedflux detected")

@@ -204,11 +204,15 @@ class LateralErosionSedDep(Component):
         
         block_size = self._grid.at_node["block_size"]
         Dchar = self._Dchar
-
+        """
+        6october 2025: below, trying to decide how to handle inlet sediment and lateral erosion. 
+        Maybe it doesn't matter if inlet sediment is zero here because there won't be any vertical erosion there.
+        So maybe just reset inlet sediment after lateral erosion and let it be reset to zero here.
+        """
         # clear qsin for next loop
-
         lat_sed_influx = self._lat_sed_influx[:] 
         lat_sed_influx[:] = 0.0
+
         debug7 = 0
         if debug7:
             print("lat_sed_influx", lat_sed_influx)
