@@ -440,9 +440,10 @@ class LateralErosionSedDep(Component):
                             ####change block size status from bedrock to blocks
                             block_size[lat_node] = Dchar
                             status_lat_nodes[lat_node] = 2
-                            #print("dzlat_ts", dzlat_ts[lat_node])
-                            #print(" ")
-                            #print("valley collapse at node: ", i)
+
+                            print(" ")
+                            print("valley collapse at node: ", i)
+                            print("dzlat_ts", dzlat_ts[lat_node])
                             #print("discharge = ", max(node_A))
                             # water_depth = self.calc_implied_depth(grain_diameter=0.5)
                             # print("water_depth", water_depth[i])
