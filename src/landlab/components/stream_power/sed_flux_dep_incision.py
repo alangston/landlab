@@ -379,6 +379,17 @@ class SedDepEroder(Component):
                 "route-to-multiple methods. Please open a GitHub Issue "
                 "to start this process."
             )
+        self._soil__depth = grid.at_node["soil__depth"]
+        # if "bedrock__elevation" in grid.at_node:
+        #     self._bedrock__elevation = grid.at_node["bedrock__elevation"]
+        # else:
+        #     self._bedrock__elevation = grid.add_zeros(
+        #         "bedrock__elevation", at="node", dtype=float
+        #     )
+
+        #     self._bedrock__elevation[:] = (
+        #         self._topographic__elevation - self._soil__depth
+        #     )
         self._flooded_depths = flooded_depths
         self._pseudoimplicit_repeats = pseudoimplicit_repeats
 
@@ -710,6 +721,7 @@ class SedDepEroder(Component):
         dt : float (years, only!)
             Timestep for which to run the component.
         """
+        soil_dep = self.grid.at_node["soil__depth"]
 
         grid = self._grid
         node_z = grid.at_node["topographic__elevation"]
@@ -871,12 +883,17 @@ class SedDepEroder(Component):
                         node_capacity = transport_capacities[i]
                         # ^we work in volume flux, not volume per se here
                         node_vol_capacity = node_vol_capacities[i]
+                        dz_here = 0    #AL added this here to prevent error 17october
                         if flood_depth > 0.0:
                             node_vol_capacity = 0.0
+                            #AL 17october2025: if flood depth is >0, 1,2,whatever
+                            # node transcapacity ==0, so no sed is transported?
                             # requires special case handling - as much sed as
                             # possible is dumped here, then the remainder
                             # passed on
                         if sed_flux_into_this_node < node_vol_capacity:
+                            # AL 17October2025: all sediment canmove through this node
+                            # AND some bedrock erosion can happen.
                             # ^note incision is forbidden at capacity
                             # flooded nodes never enter this branch
                             # #implementing the pseudoimplicit method:
@@ -912,9 +929,11 @@ class SedDepEroder(Component):
                             rel_sed_flux[i] = rel_sed_flux_here
                             vol_pass = sed_flux_out
                         else:
+                            # AL: Above, sediment coming into node is greater than capacity. so some sed will be deposited (dz_here in Dan's version)
                             rel_sed_flux[i] = 1.0
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
-                            dz_here = -vol_dropped / cell_area
+                            # dz_here = -vol_dropped / cell_area
+                            soil_dep_here = -vol_dropped / cell_area
                             # with the pits, we aim to inhibit incision, but
                             # depo is OK. We have already zero'd any adverse
                             # grads, so sed can make it to the bottom of the
@@ -923,19 +942,19 @@ class SedDepEroder(Component):
                             if flood_depth <= 0.0:
                                 vol_pass = node_vol_capacity
                             else:
-                                height_excess = -dz_here - flood_depth
+                                height_excess = -soil_dep_here - flood_depth
                                 # ...above water level
                                 if height_excess <= 0.0:
                                     vol_pass = 0.0
-                                    # dz_here is already correct
-                                    flooded_depths[i] += dz_here
+                                    # soil_dep_here is already correct
+                                    flooded_depths[i] += soil_dep_here
                                 else:
-                                    dz_here = -flood_depth
+                                    soil_dep_here = -flood_depth
                                     """
                                     Adding/trying this on May 10, 2022. AL
                                     to fix hole digging/weird deposition
                                     """
-                                    dz_here = 0.0  
+                                    soil_dep_here = 0.0  
                                     vol_pass = height_excess * cell_area
                                     # ^bit cheeky?
                                     flooded_depths[i] = 0.0
@@ -944,15 +963,16 @@ class SedDepEroder(Component):
                             # do we need to retain a small downhill slope?
                             # ...don't think so. Will resolve itself on next
                             # timestep.
-
+                        #AL: below dz is going to be bedrock erosion and soil_dep is soil depth
                         dz[i] -= dz_here
+                        soil_dep[i] += soil_dep_here
                         #below is where sed_int_node is updated
                                        
                         sed_into_node[flow_receiver[i]] += vol_pass
 
                 break_flag = True
-
-                node_z[grid.core_nodes] += dz[grid.core_nodes]
+                # AL below, trying to add soil depth to this component.
+                node_z[grid.core_nodes] = node_z[grid.core_nodes] + dz[grid.core_nodes] + soil_dep[grid.core_nodes]
 
                 if break_flag:
                     break
