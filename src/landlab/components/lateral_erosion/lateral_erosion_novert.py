@@ -259,12 +259,13 @@ class LateralErosionSedDep(Component):
                     #%%
                     if block_size[lat_node] > 0.0:
                         pass
-                    """
-                    17October2025: this is why lateral erosion wasn't working earlier. See above. the lateral erosion
-                    bit below would only happen if block_size at the node was set to zero. Below in the code, the 
-                    block_size at node is set to 1 the first time the lateral node collapses. Comment that line out.
-                    """
-                    else:    # below is for fresh bedrock valley walls
+                        """
+                        17October2025: this is why lateral erosion wasn't working earlier. See above. the lateral erosion
+                        bit below would only happen if block_size at the node was set to zero. Below in the code, the 
+                        block_size at node is set to 1 the first time the lateral node collapses. Comment that line out.
+                        """
+                    else:
+                        # below is for fresh bedrock valley walls
                         petlat = -Kl[i] * node_A[i] * slope[i] * inv_rad_curv
                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
                         vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
@@ -319,9 +320,9 @@ class LateralErosionSedDep(Component):
                             #block_size[lat_node] = Dchar
                             status_lat_nodes[lat_node] = 2
 
-                            print(" ")
-                            print("valley collapse at node: ", i)
-                            print("dzlat_ts", dzlat_ts[lat_node])
+                            #print(" ")
+                            #print("valley collapse at node: ", i)
+                            #print("dzlat_ts", dzlat_ts[lat_node])
                             #print("discharge = ", max(node_A))
                             # water_depth = self.calc_implied_depth(grain_diameter=0.5)
                             # print("water_depth", water_depth[i])
