@@ -485,8 +485,8 @@ class SpaceLargeScaleEroder(Component):
             S_to_the_n = np.power(self._slope, self._n_sp)
         omega_sed = self._K_sed * self._Q_to_the_m * S_to_the_n
         omega_br = self._K_br * self._Q_to_the_m * S_to_the_n
-        print("omega_sed = ", max(omega_sed))
-        print("omega_br = ", max(omega_br))
+        #print("omega_sed = ", max(omega_sed))
+        # print("omega_br = ", max(omega_br))
         omega_sed_over_sp_crit = np.divide(
             omega_sed,
             self._sp_crit_sed,
