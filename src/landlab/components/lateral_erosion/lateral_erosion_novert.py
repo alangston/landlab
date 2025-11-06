@@ -78,6 +78,7 @@ class LateralErosionSedDep(Component):
         discharge_field="surface_water__discharge",
         solver="basic",
         flow_accumulator=None,
+        K_sed = None
     ):
         super(LateralErosionSedDep, self).__init__(grid)
 
@@ -161,7 +162,7 @@ class LateralErosionSedDep(Component):
             self.run_one_step = self.run_one_step_adaptive
         self._Kl = Kl  # can be overwritten with spatially variable
         self._Dchar = Dchar
-
+        self._K_sed = K_sed
 
         # handling Kv for floats (inwhich case it populates an array N_nodes long) or
         # for arrays of Kv. Checks that length of Kv array is good.
@@ -188,6 +189,7 @@ class LateralErosionSedDep(Component):
         grid = self._grid
         Kl = self._Kl
         vol_lat = self._grid.at_node["volume__lateral_erosion"]
+        K_sed = self._K_sed
         """
         trying this to fix hole digging because of qsin = nan because depth 
         at node = nan because of Dan's sneakiness! in sed flux dependent.
@@ -196,8 +198,11 @@ class LateralErosionSedDep(Component):
         """
         # depth_at_node = self._grid.at_node["channel__depth"]
             # water depth in meters, needed for lateral erosion calc
-        # depth_at_node = wid_coeff * (self._A) ** wid_exp
-        depth_at_node = self.calc_implied_depth(grain_diameter=0.2)
+        # 5November2025: convert discharge into m/s for the 
+        # water depth calc, below
+        depth_at_node = wid_coeff * (self._A/3.15e7) ** wid_exp
+        #5november2025: Now using the above (old way) instead of Vanessa's way, below
+        # depth_at_node = self.calc_implied_depth(grain_diameter=0.2)
 
         # depth_nans = np.where(np.isnan(self.grid.at_node["channel__depth"])==True)
         # depth_at_node[depth_nans] = 0.0
@@ -220,6 +225,8 @@ class LateralErosionSedDep(Component):
         # status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node", clobber=True)#, noclobber=False)
         status_lat_nodes = self._status_lat_nodes
         dzlat_ts = np.zeros(grid.number_of_nodes, dtype=float)
+        dzsed_ts = np.zeros(grid.number_of_nodes, dtype=float)
+
         vol_lat_dt = np.zeros(grid.number_of_nodes)
         node_A = self._A
         slope = self._slope
@@ -263,10 +270,18 @@ class LateralErosionSedDep(Component):
                     block_size at node is set to 1 the first time the lateral node collapses. Comment that line out.
                     """
                     # else:
+                        # water depth in meters, needed for lateral erosion calc
+                        # 5November2025: convert discharge into m/s for the 
+                        # water depth calc, below
+                    # wd = wid_coeff * (node_A[i]/3.15e7) ** wid_exp
                     # below is for fresh bedrock valley walls
                     petlat = -Kl[i] * node_A[i] * slope[i] * inv_rad_curv
                     vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
                     vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
+                    # print("node i = ", str(i))
+                    # print("depth at node = ", str(depth_at_node[i]))
+                    # print("wd at node = ", str(wd))
+                    # print(" ")
 
                     
                     """
@@ -296,6 +311,40 @@ class LateralErosionSedDep(Component):
                         vol_lat[lat_node] = 0.0
                         # ^after the lateral node is eroded, reset its volume eroded to
                         # zero
+                        ###*****below is for SEDIMENT!!! New on 5 November 2025
+                        if K_sed !=None:
+                            # vol_sed is the volume of sediment available to erode
+                            vol_sed = (sed_depth[lat_node]) * grid.dx ** 2
+                            petlatsed_vol = -K_sed * node_A[i] * slope[i] * inv_rad_curv* grid.dx * depth_at_node[i]
+                            debug = 0
+                            if debug:
+                                print(" ")
+                                print("vol sed available = ", str(vol_sed))
+                                print("pet sed_vol to erode = ", str(abs(petlatsed_vol)))
+                            if vol_sed == 0.0:
+                                # print("no sediment available to erode")
+                                ero_soil = 0.0
+                            elif abs(petlatsed_vol) > vol_sed:
+                                if debug:
+                                    print("potential sed erosion is greater than available sed, ")
+                                    print("erode soil depth = ", str(sed_depth[i]))
+                                ero_soil = sed_depth[lat_node]*-1
+                            elif abs(petlatsed_vol) < vol_sed:
+                                ero_soil = petlatsed_vol/(grid.dx*depth_at_node[i])
+                                if debug:
+                                    print("erode from available sed, ")
+                                    print("erode soil depth = ", str(ero_soil))
+                            else:
+                                if debug:
+                                    print("neither condition met, ero_soil = 0")
+                                    print(frog)
+                                ero_soil = 0
+                            if debug:
+                                print("water discharge = ", node_A[i])
+                                print("depth at node = ", str(depth_at_node[i]))
+
+                            dzsed_ts[lat_node] += ero_soil
+                            # vol_latsed_dt[lat_node] += abs(petlatsed) * grid.dx * depth_at_node[i]
                     # send sediment downstream. for bedrock erosion only
                     """
                     May11, remove lat_sed_influx
@@ -314,6 +363,8 @@ class LateralErosionSedDep(Component):
         #**AL: 11/18/21: added the above few lines to save lateral erosion per timestep
         
         # change height of landscape by just removing laterally eroded stuff.
+        sed_depth[:] += dzsed_ts
+
         z_br[:] += dzlat_ts
         z[:] = z_br[:] + sed_depth[:]
         
