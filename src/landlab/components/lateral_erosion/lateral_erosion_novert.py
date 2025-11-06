@@ -251,92 +251,58 @@ class LateralErosionSedDep(Component):
                 [lat_node, inv_rad_curv] = node_finder(grid, i, flowdirs, node_A)
                 # node_finder returns the lateral node ID and the radius of curvature
                 lat_nodes[i] = lat_node
-                if lat_node > 0 and z[lat_node] > z[i]:
-                    # ^ if the elevation of the lateral node is higher than primary node, keep going
-                    ### below v ARE YOU BLOCKS OR BEDROCK?
-                    debug3=0
-                    debug=0
+                if lat_node > 0 and z_br[lat_node] > z[i]:
+                    # ^ if the elevation of the lateral node BEDROCK (NOV 2025) is higher than primary node, keep going
+
                     #%%
-                    if block_size[lat_node] > 0.0:
-                        pass
-                        """
-                        17October2025: this is why lateral erosion wasn't working earlier. See above. the lateral erosion
-                        bit below would only happen if block_size at the node was set to zero. Below in the code, the 
-                        block_size at node is set to 1 the first time the lateral node collapses. Comment that line out.
-                        """
-                    else:
-                        # below is for fresh bedrock valley walls
-                        petlat = -Kl[i] * node_A[i] * slope[i] * inv_rad_curv
-                        vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
-                        vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
+                    # if block_size[lat_node] > 0.0:
+                        # pass
+                    """
+                    17October2025: this is why lateral erosion wasn't working earlier. See above. the lateral erosion
+                    bit below would only happen if block_size at the node was set to zero. Below in the code, the 
+                    block_size at node is set to 1 the first time the lateral node collapses. Comment that line out.
+                    """
+                    # else:
+                    # below is for fresh bedrock valley walls
+                    petlat = -Kl[i] * node_A[i] * slope[i] * inv_rad_curv
+                    vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
+                    vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
 
-                        
-                        """
-                        # trying somethign new for voldiff
-                        vol diff is now going to be a percentage of the height of the
-                        lateral node. This si arbitrary. 
-                        So I'll go with when 20% of the lateral node volume has been eroded
-                        Then it can collapse for the first time. 
-                        Note, my explanation below is from the old code.
-                        """
-                        # vol_diff is the volume that must be eroded from lat_node so that its
-                        # elevation is the same as primary node
-                        # voldiff = (depth_at_node[i]) * grid.dx ** 2
-                        voldiff = (z[lat_node] - z[i]) * grid.dx **2 * 0.1
+                    
+                    """
+                    # trying somethign new for voldiff
+                    vol diff is now going to be a percentage of the height of the
+                    lateral node. This si arbitrary. 
+                    So I'll go with when 20% of the lateral node volume has been eroded
+                    Then it can collapse for the first time. 
+                    Note, my explanation below is from the old code.
+                    """
+                    # vol_diff is the volume that must be eroded from lat_node so that its
+                    # elevation is the same as primary node
+                    # voldiff = (depth_at_node[i]) * grid.dx ** 2
+                    voldiff = (z_br[lat_node] - z[i]) * grid.dx **2 * 0.1
 
-                        status_lat_nodes[lat_node] = 1
-                        #^node status=1 means that now this br valley wall has experienced some erosion
-                        debug=0
-                        if debug and i==130:
-                            print("i", i)
-                            print("lat_node", lat_node)
-                            print("z[i]", z[i])
-                            print("z[lat_node]", z[lat_node])
-                            print("z[flowdirs[i]]",z[flowdirs[i]])
-                            print("petlat_lateral", petlat*dt)
-                            print("vol_diff", voldiff)
-                            print("vol_lat[lat_node]", vol_lat[lat_node])
-                            water_depth = self.calc_implied_depth(grain_diameter=0.2)
-                            print("water_depth", water_depth[i])
-                            print("depth at node", depth_at_node[i])
-                            print("slope at node", slope[i])
-                            print(" ")
-                            print(frog)
-                        #*******WILL VALLEY WALL COLLAPSE for the first time?
-                        if vol_lat[lat_node] >= voldiff:
-                            #ALL***: ^now this line is just telling me: will this
-                            # valley wall collapse?
-                            #*****************************
+                    #*******WILL VALLEY WALL COLLAPSE for the first time?
+                    if vol_lat[lat_node] >= voldiff:
+                        #ALL***: ^now this line is just telling me: will this
+                        # valley wall collapse?
+                        #*****************************
 
-                            # dzlat_ts[lat_node] = depth_at_node[i] * -1.0
-                            # dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node]
-                            dzlat_ts[lat_node] = z[i] - z[lat_node]
+                        # dzlat_ts[lat_node] = depth_at_node[i] * -1.0
+                        # dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node]
+                        dzlat_ts[lat_node] = z[i] - z_br[lat_node]
 
-                            # ^ Change elevation of lateral node by the height of the undercut
-                            vol_lat[lat_node] = 0.0
-                            # ^after the lateral node is eroded, reset its volume eroded to
-                            # zero
-                            ####change block size status from bedrock to blocks
-                            #block_size[lat_node] = Dchar
-                            status_lat_nodes[lat_node] = 2
-
-                            #print(" ")
-                            #print("valley collapse at node: ", i)
-                            #print("dzlat_ts", dzlat_ts[lat_node])
-                            #print("discharge = ", max(node_A))
-                            # water_depth = self.calc_implied_depth(grain_diameter=0.5)
-                            # print("water_depth", water_depth[i])
-                            # print("depth at node", depth_at_node[i])
-                            # print("slope at node", slope[i])
-
-                            # print(frog)
-                        # send sediment downstream. for bedrock erosion only
-                        """
-                        May11, remove lat_sed_influx
-                        """
-                        lat_sed_influx[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
-                        if np.any(np.isnan(lat_sed_influx))==True:
-                                print("we got a nan in lat_sed_influx, line 397")
+                        # ^ Change elevation of lateral node by the height of the undercut
+                        vol_lat[lat_node] = 0.0
+                        # ^after the lateral node is eroded, reset its volume eroded to
+                        # zero
+                    # send sediment downstream. for bedrock erosion only
+                    """
+                    May11, remove lat_sed_influx
+                    """
+                    lat_sed_influx[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
+                    if np.any(np.isnan(lat_sed_influx))==True:
+                            print("we got a nan in lat_sed_influx, line 397")
 
         grid.at_node["lateral_erosion__depth_cum"][:] += dzlat_ts
         #^ AL: this only keeps track of cumulative lateral erosion at each cell.
@@ -348,10 +314,14 @@ class LateralErosionSedDep(Component):
         #**AL: 11/18/21: added the above few lines to save lateral erosion per timestep
         
         # change height of landscape by just removing laterally eroded stuff.
-        #z_br[:] += dzlat_ts
-        #z[:] = z_br[:] + sed_depth[:]
+        z_br[:] += dzlat_ts
+        z[:] = z_br[:] + sed_depth[:]
+        
         #1October2025. removing sediment as well as bedrock.
-        z[:] += dzlat_ts
+        #november 5, back to removing bedrock only
+        # print(min(dzlat_ts))
+        # print(frog)
+        # z[:] += dzlat_ts
 
         return grid
 
