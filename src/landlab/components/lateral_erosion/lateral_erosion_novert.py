@@ -258,78 +258,73 @@ class LateralErosionSedDep(Component):
                 [lat_node, inv_rad_curv] = node_finder(grid, i, flowdirs, node_A)
                 # node_finder returns the lateral node ID and the radius of curvature
                 lat_nodes[i] = lat_node
-                if lat_node > 0 and z_br[lat_node] > z[i]:
+                
+                if lat_node > 0 and z[lat_node] > z[i]:
+                    if z_br[lat_node] > z[i]:
                     # ^ if the elevation of the lateral node BEDROCK (NOV 2025) is higher than primary node, keep going
 
-                    #%%
-                    # if block_size[lat_node] > 0.0:
-                        # pass
-                    """
-                    17October2025: this is why lateral erosion wasn't working earlier. See above. the lateral erosion
-                    bit below would only happen if block_size at the node was set to zero. Below in the code, the 
-                    block_size at node is set to 1 the first time the lateral node collapses. Comment that line out.
-                    """
-                    # else:
-                        # water depth in meters, needed for lateral erosion calc
-                        # 5November2025: convert discharge into m/s for the 
-                        # water depth calc, below
-                    # wd = wid_coeff * (node_A[i]/3.15e7) ** wid_exp
-                    # below is for fresh bedrock valley walls
-                    petlat = -Kl[i] * node_A[i] * slope[i] * inv_rad_curv
-                    vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
-                    vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
-                    # print("node i = ", str(i))
-                    # print("depth at node = ", str(depth_at_node[i]))
-                    # print("wd at node = ", str(wd))
-                    # print(" ")
+                        # below is for fresh bedrock valley walls
+                        petlat = -Kl[i] * node_A[i] * slope[i] * inv_rad_curv
+                        vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
+                        vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
+                        # vol_diff is the volume that must be eroded from lat_node so that its
+                        # elevation is the same as primary node
+                        # voldiff = (depth_at_node[i]) * grid.dx ** 2
+                        #^ above is the original way, when collapse happens when volume of bedrock upto water level is eroded
+                        voldiff = (z_br[lat_node] - z[i]) * grid.dx **2 * 0.1
+                        # i like this one better because it depends more on the height of the cliff rather than the the waterleve
+                        # bc water level can change
 
-                    
-                    """
-                    # trying somethign new for voldiff
-                    vol diff is now going to be a percentage of the height of the
-                    lateral node. This si arbitrary. 
-                    So I'll go with when 20% of the lateral node volume has been eroded
-                    Then it can collapse for the first time. 
-                    Note, my explanation below is from the old code.
-                    """
-                    # vol_diff is the volume that must be eroded from lat_node so that its
-                    # elevation is the same as primary node
-                    # voldiff = (depth_at_node[i]) * grid.dx ** 2
-                    voldiff = (z_br[lat_node] - z[i]) * grid.dx **2 * 0.1
-
-                    #*******WILL VALLEY WALL COLLAPSE for the first time?
-                    if vol_lat[lat_node] >= voldiff:
-                        #ALL***: ^now this line is just telling me: will this
-                        # valley wall collapse?
-                        #*****************************
-
-                        # dzlat_ts[lat_node] = depth_at_node[i] * -1.0
-                        # dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node]
-                        dzlat_ts[lat_node] = z[i] - z_br[lat_node]
-
-                        # ^ Change elevation of lateral node by the height of the undercut
-                        vol_lat[lat_node] = 0.0
-                        # ^after the lateral node is eroded, reset its volume eroded to
-                        # zero
-                        ###*****below is for SEDIMENT!!! New on 5 November 2025
-                        if K_sed !=None:
+                        #*******WILL VALLEY WALL COLLAPSE for the first time?
+                        if vol_lat[lat_node] >= voldiff:
+                            #ALL***: ^now this line is just telling me: will this valley wall collapse?
+                            # dzlat_ts[lat_node] = depth_at_node[i] * -1.0
+                            dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node]
+                            # dzlat_ts[lat_node] = z[i] - z_br[lat_node]
+                            # ^ Change elevation of lateral node by the height of the undercut
+                            vol_lat[lat_node] = 0.0
+                            # ^after the lateral node is eroded, reset its volume eroded to
+                            # zero
+                            debug0 = 0
+                            if debug0:
+                                print("lat bedrock ero occured, node i = ", str(i))
+                                print("topo elev node i = ", str(z[i]))
+                                print("br elev node i = ", str(z_br[i]))
+                                print("soil depth node i = ", str(sed_depth[i]))
+                                print(" ")
+                                print("topo elev lat node = ", str(z[lat_node]))
+                                print("br elev lat node = ", str(z_br[lat_node]))
+                                print("soil depth lat node = ", str(sed_depth[lat_node]))
+                                print(" ")                    
+                                print("water depth at node = ", str(depth_at_node[i]))
+                                print(" ")                    
+                                print(" ")                    
+                            ##### Now we've eroded bedrock, so we can erode sediment sitting on top of bedrock
+                            max_ero_sed_dep = sed_depth[lat_node]    #maximum amount of sed that can be eroded, entire pile of sed on lat node
                             # vol_sed is the volume of sediment available to erode
-                            vol_sed = (sed_depth[lat_node]) * grid.dx ** 2
+                            vol_sed_max = max_ero_sed_dep * grid.dx**2    #assumes that all the difference in elevation between z[latnode] and z[i] is made up of sediment
+                            # vol_sed_allofit = (sed_depth[lat_node]) * grid.dx ** 2    #incorrectly assumes that the entire column of sediment can be eroded by the river
                             petlatsed_vol = -K_sed * node_A[i] * slope[i] * inv_rad_curv* grid.dx * depth_at_node[i]
+                            # ^ above is the potential amount of sediment that can be eroded simply based on a stream power-like equation
+                            # which is exactly how it's done in space. See lines 398, 399
                             debug = 0
                             if debug:
                                 print(" ")
-                                print("vol sed available = ", str(vol_sed))
+                                print("vol sed available = ", str(vol_sed_max))
                                 print("pet sed_vol to erode = ", str(abs(petlatsed_vol)))
-                            if vol_sed == 0.0:
+                                print("max soil depth = ", str(max_ero_sed_dep))
+                                print("pet sed depto erode = ", str(abs(petlatsed_vol/(grid.dx*depth_at_node[i]))))
+
+                            if vol_sed_max == 0.0:
                                 # print("no sediment available to erode")
                                 ero_soil = 0.0
-                            elif abs(petlatsed_vol) > vol_sed:
+                            elif abs(petlatsed_vol) > vol_sed_max:    #river can transport more soil than is available at lat node
                                 if debug:
                                     print("potential sed erosion is greater than available sed, ")
-                                    print("erode soil depth = ", str(sed_depth[i]))
-                                ero_soil = sed_depth[lat_node]*-1
-                            elif abs(petlatsed_vol) < vol_sed:
+                                    print("erode all max soil depth = ", str(max_ero_sed_dep))
+                                    # print(frog)
+                                ero_soil = max_ero_sed_dep*-1
+                            elif abs(petlatsed_vol) < vol_sed_max:   #more soil available than can be transported
                                 ero_soil = petlatsed_vol/(grid.dx*depth_at_node[i])
                                 if debug:
                                     print("erode from available sed, ")
@@ -339,11 +334,50 @@ class LateralErosionSedDep(Component):
                                     print("neither condition met, ero_soil = 0")
                                     print(frog)
                                 ero_soil = 0
-                            if debug:
-                                print("water discharge = ", node_A[i])
-                                print("depth at node = ", str(depth_at_node[i]))
-
                             dzsed_ts[lat_node] += ero_soil
+                    ###*****below is for SEDIMENT banks!!! New on 5 November 2025
+                    elif z_br[lat_node] <= z[i]:
+                        #^ the above condition is for cases where bedrock elev of lat node is lower
+                        # than primary node, but lateral node is higher elevation bc of sed depth. 
+                        # in that case, the river can potentially erode the volume of sediment sitting
+                        # on top of lat node until elevation of primary and lateral node are equal. 
+                        max_ero_sed_dep = z[lat_node] - z[i]    #maximum amount of sed that can be eroded so that z[i] == z[lat]
+                        # vol_sed is the volume of sediment available to erode
+                        vol_sed_max = max_ero_sed_dep * grid.dx**2    #assumes that all the difference in elevation between z[latnode] and z[i] is made up of sediment
+                        # vol_sed_allofit = (sed_depth[lat_node]) * grid.dx ** 2    #incorrectly assumes that the entire column of sediment can be eroded by the river
+                        petlatsed_vol = -K_sed * node_A[i] * slope[i] * inv_rad_curv* grid.dx * depth_at_node[i]
+                        # ^ above is the potential amount of sediment that can be eroded simply based on a stream power-like equation
+                        # which is exactly how it's done in space. See lines 398, 399
+                        debug = 0
+                        if debug:
+                            print(" ")
+                            print("vol sed available = ", str(vol_sed_max))
+                            print("pet sed_vol to erode = ", str(abs(petlatsed_vol)))
+                            print("max soil depth = ", str(max_ero_sed_dep))
+                            print("pet sed depto erode = ", str(abs(petlatsed_vol/(grid.dx*depth_at_node[i]))))
+
+                        if vol_sed_max == 0.0:
+                            # print("no sediment available to erode")
+                            ero_soil = 0.0
+                        elif abs(petlatsed_vol) > vol_sed_max:    #river can transport more soil than is available at lat node
+                            if debug:
+                                print("potential sed erosion is greater than available sed, ")
+                                print("erode all max soil depth = ", str(max_ero_sed_dep))
+                                # print(frog)
+                            ero_soil = max_ero_sed_dep*-1
+                        elif abs(petlatsed_vol) < vol_sed_max:   #more soil available than can be transported
+                            ero_soil = petlatsed_vol/(grid.dx*depth_at_node[i])
+                            if debug:
+                                print("erode from available sed, ")
+                                print("erode soil depth = ", str(ero_soil))
+                        else:
+                            if debug:
+                                print("neither condition met, ero_soil = 0")
+                                print(frog)
+                            ero_soil = 0
+
+                        dzsed_ts[lat_node] += ero_soil
+
                             # vol_latsed_dt[lat_node] += abs(petlatsed) * grid.dx * depth_at_node[i]
                     # send sediment downstream. for bedrock erosion only
                     """
@@ -375,46 +409,3 @@ class LateralErosionSedDep(Component):
         # z[:] += dzlat_ts
 
         return grid
-
-
-    """
-    Below, this is from Vanessa's gravel bedrock eroder. Just giving it a try.'
-    """
-    
-    def calc_implied_depth(self, grain_diameter=0.01):
-        """Utility function that calculates and returns water depth implied by
-        slope and grain diameter, using Wickert & Schildgen (2019) equation 8.
-    
-        The equation is::
-    
-            h = ((rho_s - rho / rho)) * (1 + epsilon) * tau_c * (D / S)
-    
-        where the factors on the right are sediment and water density, excess
-        shear-stress factor, critical Shields stress, grain diameter, and slope
-        gradient. Here the prefactor on ``D/S`` assumes sediment density of 2650 kg/m3,
-        water density of 1000 kg/m3, shear-stress factor of 0.2, and critical
-        Shields stress of 0.0495, giving a value of 0.09801.
-    
-        Examples
-        --------
-        >>> from landlab import RasterModelGrid
-        >>> from landlab.components import FlowAccumulator
-        >>> grid = RasterModelGrid((3, 3), xy_spacing=1000.0)
-        >>> elev = grid.add_zeros("topographic__elevation", at="node")
-        >>> elev[3:] = 10.0
-        >>> sed = grid.add_zeros("soil__depth", at="node")
-        >>> sed[3:] = 100.0
-        >>> fa = FlowAccumulator(grid)
-        >>> fa.run_one_step()
-        >>> eroder = GravelBedrockEroder(grid)
-        >>> water_depth = eroder.calc_implied_depth(grain_diameter=0.01)
-        >>> int(water_depth[4] * 1000)
-        98
-        """
-        depth_factor = 0.09801
-        depth = np.zeros(self._grid.number_of_nodes)
-        nonzero_slope = self._slope > 0.0
-        depth[nonzero_slope] = (
-            depth_factor * grain_diameter / self._slope[nonzero_slope]
-        )
-        return depth
