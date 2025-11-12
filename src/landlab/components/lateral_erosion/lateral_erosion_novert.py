@@ -279,8 +279,8 @@ class LateralErosionSedDep(Component):
                         if vol_lat[lat_node] >= voldiff:
                             #ALL***: ^now this line is just telling me: will this valley wall collapse?
                             # dzlat_ts[lat_node] = depth_at_node[i] * -1.0
-                            dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node]
-                            # dzlat_ts[lat_node] = z[i] - z_br[lat_node]
+                            # dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node]
+                            dzlat_ts[lat_node] = z[i] - z_br[lat_node]
                             # ^ Change elevation of lateral node by the height of the undercut
                             vol_lat[lat_node] = 0.0
                             # ^after the lateral node is eroded, reset its volume eroded to
