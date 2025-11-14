@@ -348,7 +348,7 @@ class LateralErosionSedDep(Component):
                         petlatsed_vol = -K_sed * node_A[i] * slope[i] * inv_rad_curv* grid.dx * depth_at_node[i]
                         # ^ above is the potential amount of sediment that can be eroded simply based on a stream power-like equation
                         # which is exactly how it's done in space. See lines 398, 399
-                        debug = 0
+                        debug = 1
                         if debug:
                             print(" ")
                             print("vol sed available = ", str(vol_sed_max))
@@ -377,7 +377,11 @@ class LateralErosionSedDep(Component):
                             ero_soil = 0
 
                         dzsed_ts[lat_node] += ero_soil
-
+                        # if np.any(dzsed_ts<0)==True:
+                            
+                        #     print(np.where(dzsed_ts))
+                        #     print("we got soil depth less than zero")
+                        #     print(frog)
                             # vol_latsed_dt[lat_node] += abs(petlatsed) * grid.dx * depth_at_node[i]
                     # send sediment downstream. for bedrock erosion only
                     """
