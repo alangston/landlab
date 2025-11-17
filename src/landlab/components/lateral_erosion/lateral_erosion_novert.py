@@ -348,7 +348,7 @@ class LateralErosionSedDep(Component):
                         petlatsed_vol = -K_sed * node_A[i] * slope[i] * inv_rad_curv* grid.dx * depth_at_node[i]
                         # ^ above is the potential amount of sediment that can be eroded simply based on a stream power-like equation
                         # which is exactly how it's done in space. See lines 398, 399
-                        debug = 1
+                        debug = 0
                         if debug:
                             print(" ")
                             print("vol sed available = ", str(vol_sed_max))
@@ -402,7 +402,9 @@ class LateralErosionSedDep(Component):
         
         # change height of landscape by just removing laterally eroded stuff.
         sed_depth[:] += dzsed_ts
-
+        if np.any(sed_depth < 0)==True:
+            sed_zero_idxs = np.where(sed_depth <0)[0]
+            sed_depth[sed_zero_idxs] = 0.0
         z_br[:] += dzlat_ts
         z[:] = z_br[:] + sed_depth[:]
         
