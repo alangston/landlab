@@ -304,7 +304,7 @@ class LateralErosionSedDep(Component):
                             # vol_sed is the volume of sediment available to erode
                             vol_sed_max = max_ero_sed_dep * grid.dx**2    #assumes that all the difference in elevation between z[latnode] and z[i] is made up of sediment
                             # vol_sed_allofit = (sed_depth[lat_node]) * grid.dx ** 2    #incorrectly assumes that the entire column of sediment can be eroded by the river
-                            petlatsed_vol = -K_sed[i] * node_A[i] * slope[i] * inv_rad_curv* grid.dx * depth_at_node[i]
+                            petlatsed_vol = -K_sed * node_A[i] * slope[i] * inv_rad_curv* grid.dx * depth_at_node[i]
                             # ^ above is the potential amount of sediment that can be eroded simply based on a stream power-like equation
                             # which is exactly how it's done in space. See lines 398, 399
                             debug = 0
@@ -345,7 +345,7 @@ class LateralErosionSedDep(Component):
                         # vol_sed is the volume of sediment available to erode
                         vol_sed_max = max_ero_sed_dep * grid.dx**2    #assumes that all the difference in elevation between z[latnode] and z[i] is made up of sediment
                         # vol_sed_allofit = (sed_depth[lat_node]) * grid.dx ** 2    #incorrectly assumes that the entire column of sediment can be eroded by the river
-                        petlatsed_vol = -K_sed[i] * node_A[i] * slope[i] * inv_rad_curv* grid.dx * depth_at_node[i]
+                        petlatsed_vol = -K_sed * node_A[i] * slope[i] * inv_rad_curv* grid.dx * depth_at_node[i]
                         # ^ above is the potential amount of sediment that can be eroded simply based on a stream power-like equation
                         # which is exactly how it's done in space. See lines 398, 399
                         debug = 0
