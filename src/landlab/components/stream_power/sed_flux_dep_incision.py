@@ -920,71 +920,121 @@ class SedDepEroder(Component):
                             avail_trans_cap = node_vol_capacity * (1.0-rel_sedflux_sed_ero)
                             ###next, below find the volume of soil in the cell and see if it can be eroded
                             soil_volume = soil_dep[i]*cell_area
+                            if avail_trans_cap < soil_volume and rel_sedflux_sed_ero < 1:
+                                #if available trans cap can't transport all soil depth, 
+                                # just erode part of it. 
+                                dzsoil_here = -avail_trans_cap/cell_area
+                                vol_pass =-1 * dzsoil_here * cell_area
+                                rel_sed_flux[i] = 1.0
+
+                                debug = 0
+                                if debug:   #
+                                    print(" ")
+                                    print("in sed dep eroder, only some sed eroded")
+                                    print("node = ", i)
+                                    print("total soil depth", soil_dep[i])
+                                    print("soil volume = ", soil_volume)
+                                    print("dz soil eroded",dzsoil_here)
+                                    print("node vol capacity = ", node_vol_capacity)
+                                    print("avail_trans_cap = ", avail_trans_cap)
+
+                                    print("sedflux into node = ", sed_flux_into_this_node)
+                                    print("vol_pass_soil = ", vol_pass)
+
+                                    print("sedfluxin + vol_pass = ", sed_flux_into_this_node +vol_pass)
+
+                                    print("dzbr_here = ", dzbr_here)
+                                    print("rel sed flux ero= ", rel_sedflux_sed_ero)
+                                    # if i == 323:
+                                    #     print(frog)
+                                    # print(frog)
                             #########################
-                            if avail_trans_cap >= soil_volume:
+                            # elif avail_trans_cap >= soil_volume:
+                            #2/26/2026: below, modified so that check if node can erode all volume of soil
+                            # AND still carry the sediment it came in with. 
+                            elif avail_trans_cap > soil_volume:
                                 #if all sediment/ soil can be transported, erode it from
                                 # soil depth and send it all downstream
                                 # 1/15/2026. not sure what down stream is yet, but find it in this 
                                 # variable: sed_into_node[i]
-                                soil_dep[i] = 0
-                            elif avail_trans_cap < soil_volume and rel_sedflux_sed_ero < 1:
-                                #if available trans cap can't transport all soil depth, 
-                                # just erode part of it. 
-                                dzsoil_here = -avail_trans_cap/cell_area
-                                # print("total soil depth", soil_dep[i])
-                                # print("dz soil eroded",dzsoil_here)
-                                # print("i",i)
-                                # print(frog)
-                                # *** check on thisabove, havent tested or inspected units.
-                            #############################
-                            # back to Dan... #implementing the pseudoimplicit method:
-                            try:
-                                thresh = variable_thresh
-                            except NameError:  # it doesn't exist
-                                thresh = self._thresh
-                            dz_prefactor = (
-                                self._K_unit_time
-                                * dt_this_step
-                                * (shear_tothe_a[i] - thresh).clip(0.0)
-                            )
-                            vol_prefactor = dz_prefactor * cell_area
-                            (
-                                dzbr_here,
-                                sed_flux_out,
-                                rel_sed_flux_here,
-                                error_in_sed_flux,
-                            ) = self.get_sed_flux_function_pseudoimplicit(
-                                sed_flux_into_this_node,
-                                node_vol_capacity,
-                                vol_prefactor,
-                                dz_prefactor,
-                            )
-                            # note now dz_here may never create more sed than
-                            # the out can transport...
-                            assert sed_flux_out <= node_vol_capacity, (
-                                "failed at node "
-                                + str(s_in.size - i)
-                                + " with rel sed flux "
-                                + str(sed_flux_out / node_capacity)
-                            )
-                            rel_sed_flux[i] = rel_sed_flux_here
-                            # if i == 50:
-                                # print("dan's relsed flux", rel_sed_flux_here)
-                            vol_pass = sed_flux_out
-                            # dzsoil_here = vol_pass / cell_area
-                            #1/15/26: above, that was wrong...
-                            debug = 0
-                            if i == 50 and debug:
-                                print(" ")
-                                print("in sed dep eroder, all sed transported")
-                                print("node = ", i)
-                                print("node vol capacity = ", node_vol_capacity)
-                                print("sedflux into node = ", sed_flux_into_this_node)
-                                print("sed flux out of node = ", sed_flux_out)
-                                print("dzbr_here = ", dzbr_here)
-                                print("rel sed flux = ", rel_sed_flux_here)
+                                # 2/26/2026: sed_into_node is the variable name for 
+                                # "channel_sediment__volumetric_flux"
+                                #2/26/2026: vol_pass_soil is similar to dan's vol pass for
+                                # imaginary sediment. 
+                                # below, erode all soil volume, reset soil dep to 0... no, actually
+                                # don't reset soil_dep[i], set dzsoil_here
+                                vol_pass_soil = soil_volume
+                                # soil_dep[i] = 0
+                                dzsoil_here = -soil_dep[i]
+                                #############################
+                                # back to Dan... #implementing the pseudoimplicit method:
+                                try:
+                                    thresh = variable_thresh
+                                except NameError:  # it doesn't exist
+                                    thresh = self._thresh
+                                dz_prefactor = (
+                                    self._K_unit_time
+                                    * dt_this_step
+                                    * (shear_tothe_a[i] - thresh).clip(0.0)
+                                )
+                                vol_prefactor = dz_prefactor * cell_area
+                                (
+                                    dzbr_here,
+                                    sed_flux_out,
+                                    rel_sed_flux_here,
+                                    error_in_sed_flux,
+                                ) = self.get_sed_flux_function_pseudoimplicit(
+                                    sed_flux_into_this_node,
+                                    node_vol_capacity,
+                                    vol_prefactor,
+                                    dz_prefactor,
+                                )
+                                debug = 0
+                                if debug:   #
+                                    print(" ")
+                                    print("in sed dep eroder, all sed eroded")
+                                    print("node = ", i)
+                                    print("dan's i = ", s_in.size - i)
+                                    print("dzbr_here = ", dzbr_here)
+                                    print("total soil depth", soil_dep[i])
+                                    print("dz soil eroded",dzsoil_here)
+                                    print("node vol capacity = ", node_vol_capacity)
+                                    print("avail_trans_cap = ", avail_trans_cap)
+                                    print("sedflux into node = ", sed_flux_into_this_node)
+                                    print("rel sed flux ero= ", rel_sedflux_sed_ero)
+                                    print("rel sed flux here dan= ", rel_sed_flux_here)
+                                    print("sed flux out of node = ", sed_flux_out)
+                                    print("vol_pass_soil = ", vol_pass_soil)
+                                    print("sedfluxout + vol_pass_soil = ", sed_flux_out+vol_pass_soil)
+                                    print("node capacity = ", node_capacity)
+                                    # if i == 323:
+                                    #     print(frog)
+
+                                ## 2/26/2026: here adding eroded soil to sed_flux_out
+                                # calculated above, because the trigger below.
+                                sed_flux_out += vol_pass_soil
+                                if sed_flux_out > node_vol_capacity:
+                                    
+                                    if sed_flux_out < node_vol_capacity*1.05:
+                                        print("sed flux out of node = ", sed_flux_out)
+                                        print("node vol capacity = ", node_vol_capacity)
+                                        sed_flux_out = node_vol_capacity
+                                # note now dz_here may never create more sed than
+                                # the out can transport...
+                                assert sed_flux_out <= node_vol_capacity, (
+                                    "failed at node "
+                                    + str(s_in.size - i)
+                                    + " with rel sed flux "
+                                    + str(sed_flux_out / node_vol_capacity)
+                                )    #$str(sed_flux_out / node_capacity)
+                                rel_sed_flux[i] = rel_sed_flux_here
+                                vol_pass = sed_flux_out
+                                # 2/26/2026: I added my sed eroded from soil (vol_pass_soil) to sed_flux_out
+                                # a few lines above this, so vol_pass = sed_flux_out is correct here.
+
                         else:
-                            # AL: in this loop sediment coming into node is greater than capacity. so some sed will be deposited (dz_here in Dan's version)
+                        # AL: in this loop sediment coming into node is greater than capacity. so some 
+                        # sed will be deposited (dz_here in Dan's version)
                             rel_sed_flux[i] = 1.0
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
                             # dz_here = -vol_dropped / cell_area
@@ -995,17 +1045,21 @@ class SedDepEroder(Component):
                             # pit but no further in a single step, which seems
                             # raeasonable. Pit should fill.
                             debug = 0
-                            if i == 50 and debug:
+                            if debug:
                                 print(" ")
                                 print("in sed dep eroder, sed deposited")
                                 print("node = ", i)
                                 print("node vol capacity = ", node_vol_capacity)
+                                print("vol_dropped = ", vol_dropped)
                                 print("sedflux into node = ", sed_flux_into_this_node)
                                 # print("sed flux out of node = ", sed_flux_out)
                                 print("dzbr_here = ", dzbr_here)
                                 print("dzsoil here = ", dzsoil_here)
                                 print("rel sed flux = ", rel_sed_flux[i])
                                 print("flood depth = ", flood_depth)
+                                print("dzsoil_here = ", dzsoil_here)
+                                # if node_vol_capacity > 0:
+                                #     print(frog) 
                                 # if sed_flux_into_this_node > 0:
                                 #     print(frog)
                             if flood_depth <= 0.0:
@@ -1038,29 +1092,17 @@ class SedDepEroder(Component):
                         #AL: below dz is going to be bedrock erosion and soil_dep is soil depth
                         dzbr[i] -= dzbr_here
                         dzsoil[i] += dzsoil_here
-                        #below is where sed_int_node is updated
-                                       
+                        #below is where sed_into_node is updated
                         sed_into_node[flow_receiver[i]] += vol_pass
 
                 break_flag = True
-                debug2 = 0
-                if debug2:
-                    print(" ")
-                    print("br elev 50 before", br_elev[50])
-                    print("dzbr 50", dzbr[50])
-                    print("soil dep 50 before", soil_dep[50])
-                    print("dzsoil 50", dzsoil[50])
-                    print("nodez 50 before", node_z[50])
-                    print(" ")
                 # AL below, trying to add soil depth to this component.
                 br_elev[grid.core_nodes] += dzbr[grid.core_nodes]
                 soil_dep[grid.core_nodes] += dzsoil[grid.core_nodes]
+                soil_dep[grid.core_nodes] = soil_dep[grid.core_nodes].clip(0.0)
+                # 2/26/2026 below clipping out negative values of soil depth
+
                 node_z[grid.core_nodes] = br_elev[grid.core_nodes] + soil_dep[grid.core_nodes]
-                if debug2:
-                    print("br elev 50 after", br_elev[50])
-                    print("soil dep 50 after", soil_dep[50])
-                    print("nodez 50 after", node_z[50])
-                    print(" ")
 
                 if break_flag:
                     break

@@ -881,7 +881,7 @@ class SedDepEroder(Component):
                             # possible is dumped here, then the remainder
                             # passed on
                         if sed_flux_into_this_node < node_vol_capacity:
-                            # AL 17October2025: all sediment canmove through this node
+                            # AL 17October2025: all sediment can move through this node
                             # AND some bedrock erosion can happen.
                             # ^note incision is forbidden at capacity
                             # flooded nodes never enter this branch
