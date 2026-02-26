@@ -989,7 +989,7 @@ class SedDepEroder(Component):
                                     vol_prefactor,
                                     dz_prefactor,
                                 )
-                                debug = 0
+                                debug = 1
                                 if debug:   #
                                     print(" ")
                                     print("in sed dep eroder, all sed eroded")
@@ -1006,19 +1006,23 @@ class SedDepEroder(Component):
                                     print("sed flux out of node = ", sed_flux_out)
                                     print("vol_pass_soil = ", vol_pass_soil)
                                     print("sedfluxout + vol_pass_soil = ", sed_flux_out+vol_pass_soil)
-                                    print("node capacity = ", node_capacity)
-                                    # if i == 323:
-                                    #     print(frog)
+                                    # print("node capacity = ", node_capacity)
+                                    if rel_sedflux_sed_ero > rel_sed_flux_here*2:
+                                        print(frog)
 
                                 ## 2/26/2026: here adding eroded soil to sed_flux_out
                                 # calculated above, because the trigger below.
                                 sed_flux_out += vol_pass_soil
-                                if sed_flux_out > node_vol_capacity:
-                                    
-                                    if sed_flux_out < node_vol_capacity*1.05:
+                                if debug:
+                                    print(" ")
+                                    print("new rel sed flux = ", sed_flux_out / node_vol_capacity )
+                                # statement to fix overflowing sed_flux_out, but only within 3%
+                                if sed_flux_out > node_vol_capacity:                                    
+                                    if sed_flux_out < node_vol_capacity*1.03:
                                         print("sed flux out of node = ", sed_flux_out)
                                         print("node vol capacity = ", node_vol_capacity)
                                         sed_flux_out = node_vol_capacity
+                                        
                                 # note now dz_here may never create more sed than
                                 # the out can transport...
                                 assert sed_flux_out <= node_vol_capacity, (
@@ -1027,11 +1031,11 @@ class SedDepEroder(Component):
                                     + " with rel sed flux "
                                     + str(sed_flux_out / node_vol_capacity)
                                 )    #$str(sed_flux_out / node_capacity)
-                                rel_sed_flux[i] = rel_sed_flux_here
+
+                                rel_sed_flux[i] = sed_flux_out / node_vol_capacity
                                 vol_pass = sed_flux_out
                                 # 2/26/2026: I added my sed eroded from soil (vol_pass_soil) to sed_flux_out
                                 # a few lines above this, so vol_pass = sed_flux_out is correct here.
-
                         else:
                         # AL: in this loop sediment coming into node is greater than capacity. so some 
                         # sed will be deposited (dz_here in Dan's version)
