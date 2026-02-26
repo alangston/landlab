@@ -380,6 +380,23 @@ class SedDepEroder(Component):
                 "to start this process."
             )
 
+        self._topographic__elevation = grid.at_node["topographic__elevation"]
+        if "soil__depth" in grid.at_node:
+            self._soil__depth = grid.at_node["soil__depth"]
+        else:
+            self._soil__depth = grid.add_zeros(
+                "soil__depth", at="node", dtype=float
+            )
+        if "bedrock__elevation" in grid.at_node:
+            self._bedrock__elevation = grid.at_node["bedrock__elevation"]
+        else:
+            self._bedrock__elevation = grid.add_zeros(
+                "bedrock__elevation", at="node", dtype=float
+            )
+
+            self._bedrock__elevation[:] = (
+                self._topographic__elevation - self._soil__depth
+            )
         self._flooded_depths = flooded_depths
         self._pseudoimplicit_repeats = pseudoimplicit_repeats
 
@@ -711,7 +728,8 @@ class SedDepEroder(Component):
         dt : float (years, only!)
             Timestep for which to run the component.
         """
-
+        soil_dep = self.grid.at_node["soil__depth"]
+        br_elev = self.grid.at_node["bedrock__elevation"]
         grid = self._grid
         node_z = grid.at_node["topographic__elevation"]
         node_A = grid.at_node["drainage_area"]
@@ -843,7 +861,8 @@ class SedDepEroder(Component):
                     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)                                                                       
 
                 sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
-                dz = np.zeros(grid.number_of_nodes, dtype=float)
+                dzbr = np.zeros(grid.number_of_nodes, dtype=float)
+                dzsoil = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self._cell_areas
                 try:
                     raise NameError
@@ -864,6 +883,8 @@ class SedDepEroder(Component):
                 except NameError:
                     for i in s_in[::-1]:  # work downstream
                         cell_area = cell_areas[i]
+                        dzbr_here = 0.0
+                        dzsoil_here = 0.0
                         if flooded_nodes is not None:
                             flood_depth = flooded_depths[i]
                         else:
@@ -872,7 +893,8 @@ class SedDepEroder(Component):
                         node_capacity = transport_capacities[i]
                         # ^we work in volume flux, not volume per se here
                         node_vol_capacity = node_vol_capacities[i]
-                        dz_here = 0    #AL added this here to prevent error 17october
+                        #above, node_vol_capacities is transport capcacities
+                        # multiplied by timestep.
                         if flood_depth > 0.0:
                             node_vol_capacity = 0.0
                             #AL 17october2025: if flood depth is >0, 1,2,whatever
@@ -881,11 +903,41 @@ class SedDepEroder(Component):
                             # possible is dumped here, then the remainder
                             # passed on
                         if sed_flux_into_this_node < node_vol_capacity:
-                            # AL 17October2025: all sediment canmove through this node
+                            # AL 17October2025: all sediment can move through this node
                             # AND some bedrock erosion can happen.
                             # ^note incision is forbidden at capacity
                             # flooded nodes never enter this branch
-                            # #implementing the pseudoimplicit method:
+                            """
+                            1/15/2026: here trying to erode sediment first
+                            """
+                            #above, node_vol_capacity is dan's version of converting 
+                            #trans capacity units into volume/model timestep.
+                            ################################
+                            rel_sedflux_sed_ero = sed_flux_into_this_node/node_vol_capacity
+                            ####1/15/2026: above is calculating relative sediment flux.
+                            # this is the exact way dan does it in his get_sed_flux _function_pseudoimplicit
+                            #function. I have to do this here, before the pseudoimplicit function is run.
+                            avail_trans_cap = node_vol_capacity * (1.0-rel_sedflux_sed_ero)
+                            ###next, below find the volume of soil in the cell and see if it can be eroded
+                            soil_volume = soil_dep[i]*cell_area
+                            #########################
+                            if avail_trans_cap >= soil_volume:
+                                #if all sediment/ soil can be transported, erode it from
+                                # soil depth and send it all downstream
+                                # 1/15/2026. not sure what down stream is yet, but find it in this 
+                                # variable: sed_into_node[i]
+                                soil_dep[i] = 0
+                            elif avail_trans_cap < soil_volume and rel_sedflux_sed_ero < 1:
+                                #if available trans cap can't transport all soil depth, 
+                                # just erode part of it. 
+                                dzsoil_here = -avail_trans_cap/cell_area
+                                # print("total soil depth", soil_dep[i])
+                                # print("dz soil eroded",dzsoil_here)
+                                # print("i",i)
+                                # print(frog)
+                                # *** check on thisabove, havent tested or inspected units.
+                            #############################
+                            # back to Dan... #implementing the pseudoimplicit method:
                             try:
                                 thresh = variable_thresh
                             except NameError:  # it doesn't exist
@@ -897,7 +949,7 @@ class SedDepEroder(Component):
                             )
                             vol_prefactor = dz_prefactor * cell_area
                             (
-                                dz_here,
+                                dzbr_here,
                                 sed_flux_out,
                                 rel_sed_flux_here,
                                 error_in_sed_flux,
@@ -916,34 +968,65 @@ class SedDepEroder(Component):
                                 + str(sed_flux_out / node_capacity)
                             )
                             rel_sed_flux[i] = rel_sed_flux_here
+                            # if i == 50:
+                                # print("dan's relsed flux", rel_sed_flux_here)
                             vol_pass = sed_flux_out
+                            # dzsoil_here = vol_pass / cell_area
+                            #1/15/26: above, that was wrong...
+                            debug = 0
+                            if i == 50 and debug:
+                                print(" ")
+                                print("in sed dep eroder, all sed transported")
+                                print("node = ", i)
+                                print("node vol capacity = ", node_vol_capacity)
+                                print("sedflux into node = ", sed_flux_into_this_node)
+                                print("sed flux out of node = ", sed_flux_out)
+                                print("dzbr_here = ", dzbr_here)
+                                print("rel sed flux = ", rel_sed_flux_here)
                         else:
-                            # AL: Above, sediment coming into node is greater than capacity. so some sed will be deposited (dz_here in Dan's version)
+                            # AL: in this loop sediment coming into node is greater than capacity. so some sed will be deposited (dz_here in Dan's version)
                             rel_sed_flux[i] = 1.0
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
                             # dz_here = -vol_dropped / cell_area
-                            dz_here = -vol_dropped / cell_area
+                            dzsoil_here = vol_dropped / cell_area
                             # with the pits, we aim to inhibit incision, but
                             # depo is OK. We have already zero'd any adverse
                             # grads, so sed can make it to the bottom of the
                             # pit but no further in a single step, which seems
                             # raeasonable. Pit should fill.
+                            debug = 0
+                            if i == 50 and debug:
+                                print(" ")
+                                print("in sed dep eroder, sed deposited")
+                                print("node = ", i)
+                                print("node vol capacity = ", node_vol_capacity)
+                                print("sedflux into node = ", sed_flux_into_this_node)
+                                # print("sed flux out of node = ", sed_flux_out)
+                                print("dzbr_here = ", dzbr_here)
+                                print("dzsoil here = ", dzsoil_here)
+                                print("rel sed flux = ", rel_sed_flux[i])
+                                print("flood depth = ", flood_depth)
+                                # if sed_flux_into_this_node > 0:
+                                #     print(frog)
                             if flood_depth <= 0.0:
                                 vol_pass = node_vol_capacity
                             else:
-                                height_excess = -dz_here - flood_depth
+                                height_excess = dzsoil_here - flood_depth
                                 # ...above water level
                                 if height_excess <= 0.0:
                                     vol_pass = 0.0
-                                    # dz_here is already correct
-                                    flooded_depths[i] += dz_here
+                                    # dzsoil_here is already correct
+                                    flooded_depths[i] += dzsoil_here
                                 else:
-                                    dz_here = -flood_depth
+                                    dzsoil_here = -flood_depth
                                     """
+                                    jan 15, 2026: not sure what's happening here,
+                                    but I'm chaning dzsoil_here to have positive
+                                    sign instead of negative.
                                     Adding/trying this on May 10, 2022. AL
                                     to fix hole digging/weird deposition
                                     """
-                                    dz_here = 0.0  
+                                    dzsoil_here = 0.0  
                                     vol_pass = height_excess * cell_area
                                     # ^bit cheeky?
                                     flooded_depths[i] = 0.0
@@ -952,14 +1035,33 @@ class SedDepEroder(Component):
                             # do we need to retain a small downhill slope?
                             # ...don't think so. Will resolve itself on next
                             # timestep.
-                        dz[i] -= dz_here
+                        #AL: below dz is going to be bedrock erosion and soil_dep is soil depth
+                        dzbr[i] -= dzbr_here
+                        dzsoil[i] += dzsoil_here
                         #below is where sed_int_node is updated
                                        
                         sed_into_node[flow_receiver[i]] += vol_pass
 
                 break_flag = True
-                node_z[grid.core_nodes] += dz[grid.core_nodes]
-                
+                debug2 = 0
+                if debug2:
+                    print(" ")
+                    print("br elev 50 before", br_elev[50])
+                    print("dzbr 50", dzbr[50])
+                    print("soil dep 50 before", soil_dep[50])
+                    print("dzsoil 50", dzsoil[50])
+                    print("nodez 50 before", node_z[50])
+                    print(" ")
+                # AL below, trying to add soil depth to this component.
+                br_elev[grid.core_nodes] += dzbr[grid.core_nodes]
+                soil_dep[grid.core_nodes] += dzsoil[grid.core_nodes]
+                node_z[grid.core_nodes] = br_elev[grid.core_nodes] + soil_dep[grid.core_nodes]
+                if debug2:
+                    print("br elev 50 after", br_elev[50])
+                    print("soil dep 50 after", soil_dep[50])
+                    print("nodez 50 after", node_z[50])
+                    print(" ")
+
                 if break_flag:
                     break
                 # do we need to reroute the flow/recalc the slopes here?
@@ -971,7 +1073,7 @@ class SedDepEroder(Component):
                     core_draining_nodes
                 ] / link_length[core_draining_nodes]
                 internal_t += dt_this_step  # still in seconds, remember
-
+#%%
         elif self._Qc == "power_law":
             transport_capacity_prefactor_withA = self._Kt * node_A**self._mt
             erosion_prefactor_withA = self._K_unit_time * node_A**self._m
@@ -1084,7 +1186,7 @@ class SedDepEroder(Component):
                     core_draining_nodes
                 ] / link_length[core_draining_nodes]
                 internal_t += dt_this_step  # still in seconds, remember
-
+#%%
         if self._return_ch_props:
             # add the channel property field entries,
             # 'channel__width', 'channel__depth', and 'channel__discharge'
@@ -1101,6 +1203,10 @@ class SedDepEroder(Component):
         ] = transport_capacities
         grid.at_node["channel_sediment__volumetric_flux"][:] = sed_into_node
         grid.at_node["channel_sediment__relative_flux"][:] = rel_sed_flux
+        
+        # grid.at_node["soil__depth"][:] = soil_dep
+        #1/15/26, don't think i need this. above
+
         # elevs set automatically to the name used in the function call.
         self._iterations_in_dt = counter
 
