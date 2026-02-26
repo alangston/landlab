@@ -989,7 +989,7 @@ class SedDepEroder(Component):
                                     vol_prefactor,
                                     dz_prefactor,
                                 )
-                                debug = 1
+                                debug = 0
                                 if debug:   #
                                     print(" ")
                                     print("in sed dep eroder, all sed eroded")
@@ -1030,7 +1030,7 @@ class SedDepEroder(Component):
                                     + str(s_in.size - i)
                                     + " with rel sed flux "
                                     + str(sed_flux_out / node_vol_capacity)
-                                )    #$str(sed_flux_out / node_capacity)
+                                )
 
                                 rel_sed_flux[i] = sed_flux_out / node_vol_capacity
                                 vol_pass = sed_flux_out
