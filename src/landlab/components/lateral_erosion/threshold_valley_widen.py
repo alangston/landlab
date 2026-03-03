@@ -74,7 +74,6 @@ class ValleyWiden(Component):
         Kl=None,
         Dchar=None,
         discharge_field="drainage_area",
-        solver="basic",
         flow_accumulator=None,
         g=9.81,
         sed_density=2700,
@@ -103,13 +102,6 @@ class ValleyWiden(Component):
                 )
                 raise NotImplementedError(msg)
 
-        if solver not in ("basic", "adaptive"):
-            raise ValueError(
-                "value for solver not understood ({val} not one of {valid})".format(
-                    val=solver, valid=", ".join(("basic", "adaptive"))
-                )
-            )
-
         if Kl is None:
             raise ValueError(
                 "Kl must be set as a float, node array, or field name. It was None."
@@ -120,17 +112,6 @@ class ValleyWiden(Component):
                 "Dchar (charactertistic block size) must be set as a float, node array, or field name. It was None."
             )
             
-        if solver == "adaptive":
-            if not isinstance(flow_accumulator, FlowAccumulator):
-                raise ValueError(
-                    (
-                        "When the adaptive solver is used, a valid "
-                        "FlowAccumulator must be passed on "
-                        "instantiation."
-                    )
-                )
-            self._flow_accumulator = flow_accumulator
-
         # Create fields needed for this component if not already existing
         if "volume__lateral_erosion" in grid.at_node:
             self._vol_lat = grid.at_node["volume__lateral_erosion"]
@@ -164,11 +145,7 @@ class ValleyWiden(Component):
                 self._dzlat_ts = grid.at_node["dzlat_ts"]
             else:
                 self._dzlat_ts = grid.add_zeros("dzlat_ts", at="node")
-        # option use adaptive time stepping. Default is fixed dt supplied by user
-        if solver == "basic":
-            self.run_one_step = self.run_one_step_basic
-        elif solver == "adaptive":
-            self.run_one_step = self.run_one_step_adaptive
+
         self._Kl = Kl  # can be overwritten with spatially variable
         self.g = g
         self._b_sde = b_sde
@@ -189,7 +166,7 @@ class ValleyWiden(Component):
         ###^^^***** april 25, 2022 above from stream_power AND my new additions
         # to sed_flux_dependent_incision
 
-    def run_one_step_basic(self, dt=1.0):
+    def run_one_step(self, dt):
         """Calculate lateral erosion for
         a time period 'dt'.
 
@@ -204,12 +181,6 @@ class ValleyWiden(Component):
         """
         grid = self._grid
         Kl = self._Kl
-#        dzlat_cum = self._dzlat
-        #from january 2020. This doesn't seem to do anything. Trying to solve
-        # problem thta I"m not tracking cumulative lateral erosion (apparently?)
-        #*** ^july 2020, actually I am tracking cumulative erosion
-#        qs_in = self._qs_in
-        #july 28, 2020: removign the above because I want qs_in reset every timestep
         vol_lat = self._grid.at_node["volume__lateral_erosion"]
         """
         trying this to fix hole digging because of qsin = nan because depth 
@@ -218,7 +189,6 @@ class ValleyWiden(Component):
 		Ah, it doesn't matter. I just change channel depths that are nans into zeros
         """
         depth_at_node = self._grid.at_node["channel__depth"]
-
         depth_nans = np.where(np.isnan(self.grid.at_node["channel__depth"])==True)
         depth_at_node[depth_nans] = 0.0
         channel__bed_shear_stress = self._grid.at_node["channel__bed_shear_stress"]
@@ -227,27 +197,24 @@ class ValleyWiden(Component):
         rel_sed_flux = self._grid.at_node["channel_sediment__relative_flux"]
         chan_trans_cap = self._grid.at_node["channel_sediment__volumetric_transport_capacity"]
         new_transport_capacities = calc_new_transport_capacities(self, grid, Dchar)
+        # 3/3/2026: above new_transport_capacities is trans capcity to transport laterally eroded blocks... 
         grid.at_node["channel_sediment__volumetric_transport_capacity"] = new_transport_capacities
-
-        #^ALL 7/282020: this is from sed_flux_dep_incision.py
         z = grid.at_node["topographic__elevation"]
 
-        debug7 = 0
-        if debug7:
-            print("qs_in", qs_in)
+
         # clear qsin for next loop
         if "inlet_sediment__flux" in grid.at_node:
             # qs_in = np.copy(self._grid.at_node["inlet_sediment__flux"])
             qs_in = np.copy(self._qs_in_inlet)
         else:
             qs_in = grid.add_zeros("node", "lateral_sediment__flux", clobber=True)
-        #^ version of line from 1/2020. 7/28/2020: changed noclobber=False to clobber=True
 
         lat_nodes = np.zeros(grid.number_of_nodes, dtype=int)
-#        status_lat_nodes = grid.add_zeros("node", "status_lat_nodes", noclobber=False)
         status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node", clobber=True)#, noclobber=False)
         dzlat_ts = np.zeros(grid.number_of_nodes, dtype=float)
         vol_lat_dt = np.zeros(grid.number_of_nodes)
+        sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
+
         node_A = self._A
         #4/25/2022 AL added thsi above. 
         # I believe this works now along with added stuff on line 358
@@ -265,13 +232,14 @@ class ValleyWiden(Component):
         flowdirs = grid.at_node["flow__receiver_node"]
 
         # make a list l, where node status is interior (signified by label 0) in s
+        # 3/3/2026, no idea why I did the list below like that. Why use status at node?
         interior_s = s[np.where((grid.status_at_node[s] == 0))[0]]
         dwnst_nodes = interior_s.copy()
         # reverse list so we go from upstream to down stream
         dwnst_nodes = dwnst_nodes[::-1]
         max_slopes[:] = max_slopes.clip(0)
-        new_transport_capacities = calc_new_transport_capacities(self, grid, Dchar)
-        grid.at_node["channel_sediment__volumetric_transport_capacity"] = new_transport_capacities
+        # new_transport_capacities = calc_new_transport_capacities(self, grid, Dchar)
+        # grid.at_node["channel_sediment__volumetric_transport_capacity"] = new_transport_capacities
         """
         #ALL***: below is only for finding the lateral node
         """
@@ -321,16 +289,10 @@ class ValleyWiden(Component):
                             if avail_trans_cap >= pile_volume:
                                 #if all sediment from lateral erosion can be transported
                                 # by teh channel, send it all down stream
-                                """
-                                COMMENTED OUT LINE BELOW FOR TEST
-                                MAY 9, 2022, 3:10 PM
-                                """
-                                qs_in[flowdirs[i]] += pile_volume 
+                                vol_pass = pile_volume 
                                 if np.any(np.isnan(qs_in))==True:
                                     print("we got a nan in qs_in, line 288")
-                                    print("time = ", precip.elapsed_time)
-                                    toc=time.time()
-                                    print("elapsed time = ", toc-tic)
+                                    # print("time = ", precip.elapsed_time)
                                     print(frog)
                                 # then calculate how much elevation will be lost on teh lateral node
                                 # from that downstream transport
@@ -359,12 +321,9 @@ class ValleyWiden(Component):
                                 COMMENTED OUT LINE BELOW FOR TEST
                                 MAY 9, 2022, 3:10 PM
                                 """
-                                qs_in[flowdirs[i]] += avail_trans_cap
+                                vol_pass= avail_trans_cap
                                 if np.any(np.isnan(qs_in))==True:
                                     print("we got a nan in qs_in, line 316")
-                                    print("time = ", precip.elapsed_time)
-                                    toc=time.time()
-                                    print("elapsed time = ", toc-tic)
                                     print(frog)
                                 # ^ send the sediment downstream. this is volume of 
                                 # sediment  in m**3(no time scale in here, but this
@@ -394,10 +353,8 @@ class ValleyWiden(Component):
     #                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
                             voldiff = depth_at_node[i] * grid.dx ** 2
                             # below, send sediment downstream, units of volume
-                            """
-                            May11, remove qs_in
-                            """
-                            qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
+                            # 3/3/2026 FIX! CHECK THIS BELOW
+                            vol_pass = (abs(petlat) * grid.dx * depth_at_node[i]) * dt
                             if np.any(np.isnan(qs_in))==True:
                                 print("we got a nan in qs_in, line 347")
                                 print("time = ", precip.elapsed_time)
@@ -421,9 +378,7 @@ class ValleyWiden(Component):
                     else:    # below is for fresh bedrock valley walls
                         petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
-                        vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
-
-                        
+                        vol_lat[lat_node] += vol_lat_dt[lat_node] * dt                        
                         """
                         # trying somethign new for voldiff
                         vol diff is now going to be a percentage of the height of the
@@ -431,6 +386,9 @@ class ValleyWiden(Component):
                         So I'll go with when 20% of the lateral node volume has been eroded
                         Then it can collapse for the first time. 
                         Note, my explanation below is from the old code.
+                        
+                        3/3/2026: FIX, how voldiff is calculated, check depth_at_node.
+                        depth_at_node is from dan's sed_flux component, along with trans capacity, etc.
                         """
                         # vol_diff is the volume that must be eroded from lat_node so that its
                         # elevation is the same as primary node
@@ -456,10 +414,8 @@ class ValleyWiden(Component):
                             block_size[lat_node] = Dchar
                             status_lat_nodes[lat_node] = 2
                         # send sediment downstream. for bedrock erosion only
-                        """
-                        May11, remove qs_in
-                        """
-                        qs_in[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
+
+                        vol_pass = (abs(petlat) * grid.dx * depth_at_node[i]) * dt
                         if np.any(np.isnan(qs_in))==True:
                                 print("we got a nan in qs_in, line 397")
                                 print(" ")
@@ -480,11 +436,9 @@ class ValleyWiden(Component):
                                 print("transcaphere_ts", transcap_here_ts)
                                 print("avail trans cap", avail_trans_cap)
                                 print("dt", dt)
-                                print("time = ", precip.elapsed_time)
-                                toc=time.time()
-                                print("elapsed time = ", toc-tic)
-
                                 print(frog)
+                    #below is where sed_into_node is updated
+                    sed_into_node[flow_receiver[i]] += vol_pass
 #                        print("qs_in[flowdirs[i]] AFTER", qs_in[flowdirs[i]])
 #        qs[:] = qs_in
         debug2=0
@@ -494,34 +448,8 @@ class ValleyWiden(Component):
 #            print("status latnodes", status_lat_nodes)
             print("dzlat_ts", dzlat_ts)
 #            print(frog)
-        
-        #All***: ^ I don't exactly remember what that is for/why.
-        # this loop determines if enough lateral erosion has happened to change
-        # the height of the neighbor node.
-#        for i in dwnst_nodes:
-#            lat_node = lat_nodes[i]
-#            depth_at_node[i]
-#            if lat_node > 0:  # greater than zero now bc inactive neighbors are value -1
-#                if z[lat_node] > z[i]:
-#                    # vol_diff is the volume that must be eroded from lat_node so that its
-#                    # elevation is the same as node downstream of primary node
-#                    # UC model: this would represent undercutting (the water height at
-#                    # node i), slumping, and instant removal.
-#                    if UC == 1:
-#                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
-#                    # TB model: entire lat node must be eroded before lateral erosion
-#                    # occurs
-#                    if TB == 1:
-#                        voldiff = (z[lat_node] - z[flowdirs[i]]) * grid.dx ** 2
-#                    # if the total volume eroded from lat_node is greater than the volume
-#                    # needed to be removed to make node equal elevation,
-#                    # then instantaneously remove this height from lat node. already has
-#                    # timestep in it
-#                    if vol_lat[lat_node] >= voldiff:
-#                        self._dzlat[lat_node] = z[flowdirs[i]] - z[lat_node]  # -0.001
-#                        # after the lateral node is eroded, reset its volume eroded to
-#                        # zero
-#                        vol_lat[lat_node] = 0.0
+        grid.at_node["channel_sediment__volumetric_flux"][:] += sed_into_node
+
         grid.at_node["lateral_erosion__depth_cum"][:] += dzlat_ts
         #^ AL: this only keeps track of cumulative lateral erosion at each cell.
 
