@@ -229,7 +229,7 @@ class ValleyWiden(Component):
         # upstream order list of node ids
         s = grid.at_node["flow__upstream_node_order"]
         max_slopes = grid.at_node["topographic__steepest_slope"]
-        flowdirs = grid.at_node["flow__receiver_node"]
+        flow_receiver = grid.at_node["flow__receiver_node"]
 
         # make a list l, where node status is interior (signified by label 0) in s
         # 3/3/2026, no idea why I did the list below like that. Why use status at node?
@@ -249,8 +249,8 @@ class ValleyWiden(Component):
             # Choose lateral node for node i. If node i flows downstream, continue.
             # if node i is the first cell at the top of the drainage network, don't go
             # into this loop because in this case, node i won't have a "donor" node
-            if i in flowdirs:
-                [lat_node, inv_rad_curv] = node_finder(grid, i, flowdirs, node_A)
+            if i in flow_receiver:
+                [lat_node, inv_rad_curv] = node_finder(grid, i, flow_receiver, node_A)
                 # node_finder returns the lateral node ID and the radius of curvature
                 lat_nodes[i] = lat_node
                 if lat_node > 0 and z[lat_node] > z[i]:
@@ -275,7 +275,7 @@ class ValleyWiden(Component):
                             # volume of pile of stuff
                             #may 10, 2022, changed this to the pile volume between the node that is downstream of 
                                 # the primary node and lateral node, not pile volume between primary and lateral. 
-                            pile_volume = (z[lat_node] - z[flowdirs[i]]) * grid.dx ** 2
+                            pile_volume = (z[lat_node] - z[flow_receiver[i]]) * grid.dx ** 2
                             # below is the conversion of trans capacity into m^3/model time step
                             transcap_here_ts = chan_trans_cap[i]*dt*self.sec_per_year
                             avail_trans_cap = transcap_here_ts * (1.0-rel_sed_flux[i])
@@ -299,7 +299,7 @@ class ValleyWiden(Component):
                                 #may 10, 2022, changed this to the elevation diff between the node that is downstream of 
                                 # the primary node and lateral node, not elev diff between primary and lateral. 
                                 # plus half mm to prevent hole digging
-                                dzlat_ts[lat_node] = z[flowdirs[i]] - z[lat_node] + 0.0005
+                                dzlat_ts[lat_node] = z[flow_receiver[i]] - z[lat_node] + 0.0005
                                 #finally, reset block size to reflect fresh bedrock
                                 block_size[lat_node] = 0.0
                                 status_lat_nodes[lat_node] = 5
@@ -314,7 +314,7 @@ class ValleyWiden(Component):
                                 # pile as possible
                                 # note I use negative availtranscap to make dzlat a negative number
                                 # may 10, 2022. plus half mm to prevent hole digging
-                                dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, (z[flowdirs[i]] - z[lat_node] +0.0005))
+                                dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, (z[flow_receiver[i]] - z[lat_node] +0.0005))
                                 # ^ this will give the elevation that can be removed from 
                                 # the pile of stuff that is the lateral node.
                                 """
@@ -333,8 +333,8 @@ class ValleyWiden(Component):
                                     print("entire pile NOT transported")
                             if debug3 and lat_node == 438:
                                 print(" ")
-                                print("downstream node", flowdirs[i])
-                                print("qs_in[flowdirs[i]]", qs_in[flowdirs[i]])
+                                print("downstream node", flow_receiver[i])
+                                print("qs_in[flow_receiver[i]]", qs_in[flow_receiver[i]])
                                 print("transcap", transcap_here_ts)
                                 print("relsedflux", rel_sed_flux[i])
                                 print("avail_trans_cap", avail_trans_cap)
@@ -350,7 +350,7 @@ class ValleyWiden(Component):
                             vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
                             # vol_diff is the volume that must be eroded from lat_node so that its
                             # elevation is the same as node downstream of primary node
-    #                        voldiff = (z[i] + depth_at_node[i] - z[flowdirs[i]]) * grid.dx ** 2
+    #                        voldiff = (z[i] + depth_at_node[i] - z[flow_receiver[i]]) * grid.dx ** 2
                             voldiff = depth_at_node[i] * grid.dx ** 2
                             # below, send sediment downstream, units of volume
                             # 3/3/2026 FIX! CHECK THIS BELOW
@@ -419,8 +419,8 @@ class ValleyWiden(Component):
                         if np.any(np.isnan(qs_in))==True:
                                 print("we got a nan in qs_in, line 397")
                                 print(" ")
-                                print("downstream node", flowdirs[i])
-                                print("qs_in[flowdirs[i]]", qs_in[flowdirs[i]])
+                                print("downstream node", flow_receiver[i])
+                                print("qs_in[flow_receiver[i]]", qs_in[flow_receiver[i]])
                                 print("petlat", petlat)
                                 print("depth_at_nodes", depth_at_node[i])
                                 print("transcap", transcap_here_ts)
@@ -439,7 +439,7 @@ class ValleyWiden(Component):
                                 print(frog)
                     #below is where sed_into_node is updated
                     sed_into_node[flow_receiver[i]] += vol_pass
-#                        print("qs_in[flowdirs[i]] AFTER", qs_in[flowdirs[i]])
+#                        print("qs_in[flow_receiver[i]] AFTER", qs_in[flow_receiver[i]])
 #        qs[:] = qs_in
         debug2=0
         if debug2:
