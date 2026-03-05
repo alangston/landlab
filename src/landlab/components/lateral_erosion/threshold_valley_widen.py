@@ -118,12 +118,11 @@ class ValleyWiden(Component):
         else:
             self._vol_lat = grid.add_zeros("volume__lateral_erosion", at="node")
 
-        if "inlet_sediment__flux" in grid.at_node:
-            self._qs_in_inlet = grid.at_node["inlet_sediment__flux"]
-        # if "lateral_sediment__flux" in grid.at_node:
-        #     self._qs_in = grid.at_node["lateral_sediment__flux"]
-        # else:
-        #     self._qs_in = grid.add_zeros("lateral_sediment__flux", at="node")
+
+        if "lateral_sediment__flux" in grid.at_node:
+            self._qs_in = grid.at_node["lateral_sediment__flux"]
+        else:
+            self._qs_in = grid.add_zeros("lateral_sediment__flux", at="node")
 
         if "lateral_erosion__depth_increment" in grid.at_node:
             self._dzlat = grid.at_node["lateral_erosion__depth_cum"]
@@ -515,9 +514,5 @@ def calc_new_transport_capacities(self, grid, Dchar):
     trp_diff = (transport_capacities_S - transport_capacities_thresh).clip(
     0.0
     )
-    # print("transcap prefactor with A", transport_capacity_prefactor_withA)
-    # print("transport_capacities_thresh", transport_capacities_thresh)
-    # print("trpdiff", trp_diff)
-    # print(frog)
     transport_capacities = np.sqrt(trp_diff * trp_diff * trp_diff)
     return transport_capacities
