@@ -86,6 +86,7 @@ from .species_evolution import SpeciesEvolver
 from .steepness_index import SteepnessFinder
 from .stream_power import FastscapeEroder
 from .stream_power import SedDepEroder
+from .stream_power import SedDepEroderDan
 from .stream_power import StreamPowerEroder
 from .stream_power import StreamPowerSmoothThresholdEroder
 from .taylor_nonlinear_hillslope_flux import TaylorNonLinearDiffuser
@@ -161,6 +162,7 @@ COMPONENTS = [
     Radiation,
     RiverFlowDynamics,
     SedDepEroder,
+    SedDepEroderDan,
     SedimentPulserAtLinks,
     SedimentPulserEachParcel,
     SharedStreamPower,

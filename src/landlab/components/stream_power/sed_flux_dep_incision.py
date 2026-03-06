@@ -248,7 +248,9 @@ class SedDepEroder(Component):
         return_stream_properties=False,
         # flooded node info
         flooded_depths=None,
-        inlet_node_ID=None
+        inlet_node_ID=None,
+        inlet_sedflux=None,
+        lateral_erosion_active = False
     ):
         """Constructor for the class.
 
@@ -399,6 +401,9 @@ class SedDepEroder(Component):
                 self._topographic__elevation - self._soil__depth
             )
         self._inlet_node_ID = inlet_node_ID
+        self._inlet_sedflux = inlet_sedflux
+        self._lateral_erosion_active = lateral_erosion_active
+
         self._flooded_depths = flooded_depths
         self._pseudoimplicit_repeats = pseudoimplicit_repeats
 
@@ -763,15 +768,6 @@ class SedDepEroder(Component):
         s_in = grid.at_node["flow__upstream_node_order"]
         node_S = grid.at_node["topographic__steepest_slope"]
 
-        # #ALL***: below, if we send sediment to vertical erosion because lateral
-        # # erosion is running, do not initialize this as zeros. use the
-        # # values sent to the component instead.
-        # if "lateral_sediment__influx" in grid.at_node:
-        #     sed_into_node = self._grid.at_node["lateral_sediment__influx"]
-        #     print("in sed dep, lateral sed flux detected")
-        # else:
-        #     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
-        #     print("in sed dep, NO lateral sed flux detected")
         if isinstance(self._flooded_depths, str):
             flooded_depths = grid.at_node[self._flooded_depths]
             # also need a map of initial flooded conds:
@@ -890,13 +886,14 @@ class SedDepEroder(Component):
                 #ALL***: below, if we send sediment to vertical erosion because lateral
                 # erosion is running, do not initialize this as zeros. use the
                 # values sent to the component instead.
-                if "lateral_sediment__flux" in grid.at_node:
+                if self._lateral_erosion_active:
                     sed_into_node = self._grid.at_node["lateral_sediment__flux"]
                     # print("in sed dep, lateral sed flux detected")
                 else:
                     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                     # print("in sed dep, NO lateral sed flux detected")
-                # sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
+                if self._inlet_node_ID is not None:
+                    sed_into_node[self._inlet_node_ID] = self._inlet_sedflux
                 dzbr = np.zeros(grid.number_of_nodes, dtype=float)
                 dzsoil = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self._cell_areas
@@ -965,9 +962,9 @@ class SedDepEroder(Component):
                                 vol_pass =-1 * dzsoil_here * cell_area
                                 rel_sed_flux[i] = 1.0
 
-                                debug = 1
-                                # if debug and (i == 1442 or i == 1412):
-                                if debug and i == 1412 or i == 1442:
+                                debug = 0
+                                if debug and (i == 1442 or i == 1412):
+                                # if debug and i == 1412 or i == 1442:
                                     print(" ")
                                     print("in sed dep eroder, only some sed eroded")
                                     print("node = ", i)
@@ -1033,8 +1030,8 @@ class SedDepEroder(Component):
                                     dz_prefactor,
                                 )
                                 debug = 0
-                                # if debug and (i == 1442 or i == 1412):   #
-                                if debug and i == 1412 or i == 1442:
+                                if debug and (i == 1442 or i == 1412):   #
+                                # if debug and i == 1412 or i == 1442:
 
                                     print(" ")
                                     print("in sed dep eroder, all sed eroded")
@@ -1059,6 +1056,10 @@ class SedDepEroder(Component):
                                     # print(frog)
                                     if rel_sedflux_sed_ero > rel_sed_flux_here*2:
                                         print(frog)
+                                        if debug99 and i ==138:
+                                            print("node = ", i, " sends a bunch of sed downstream")
+                                            print(" elevation at node i = ", node_z[i])
+                                            print(" elevation at node i downstream = ", node_z[flow_receiver[i]])
 
                                 ## 2/26/2026: here adding eroded soil to sed_flux_out
                                 # calculated above, because the trigger below.
@@ -1066,7 +1067,7 @@ class SedDepEroder(Component):
 
                                 # statement to fix overflowing sed_flux_out, but only within 3%
                                 if sed_flux_out > node_vol_capacity:                                    
-                                    if sed_flux_out < node_vol_capacity*1.005:
+                                    if sed_flux_out < node_vol_capacity*1.01:
                                         # print("sed flux out of node = ", sed_flux_out)
                                         # print("node vol capacity = ", node_vol_capacity)
                                         sed_flux_out = node_vol_capacity
@@ -1111,9 +1112,10 @@ class SedDepEroder(Component):
                             # grads, so sed can make it to the bottom of the
                             # pit but no further in a single step, which seems
                             # raeasonable. Pit should fill.
-                            debug = 0
+                            debug = 1
                             # if debug and (i == 1442 or i == 1412):
-                            if debug and i == 1412 or i == 1442:
+                            # if debug and i == 1412 or i == 1442:
+                            if dzsoil_here > 2 and i >30:
 
                             # if debug:
                                 print(" ")
@@ -1123,16 +1125,18 @@ class SedDepEroder(Component):
                                 print("runoff rate", self._runoff_rate[i])
                                 print("node_A", node_A[i])
                                 print("surface_water__Q", grid.at_node["surface_water__discharge"][i])
-                                print("node vol capacity = ", node_vol_capacity)
+                                # print("node vol capacity = ", node_vol_capacity)
                                 print("vol_dropped = ", vol_dropped)
                                 print("sedflux into node = ", sed_flux_into_this_node)
+                                print("node_vol_capacity = ", node_vol_capacity)
                                 # print("sed flux out of node = ", sed_flux_out)
-                                print("dzbr_here = ", dzbr_here)
-                                print("dzsoil here = ", dzsoil_here)
+
+
+                                print(" ")
                                 print("rel sed flux = ", rel_sed_flux[i])
-                                print("flood depth = ", flood_depth)
                                 print("dzsoil_here = ", dzsoil_here)
                                 print("froggies!!!!")
+
                                 # print(frog)
                                 # if node_vol_capacity > 0:
                                 #     print(frog) 

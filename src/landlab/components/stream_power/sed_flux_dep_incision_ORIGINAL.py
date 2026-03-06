@@ -9,7 +9,7 @@ from landlab.utils.decorators import make_return_array_immutable
 from landlab.utils.return_array import return_array_at_node                                                           
 
 
-class SedDepEroder(Component):
+class SedDepEroderDan(Component):
     """
     This module implements sediment flux dependent channel incision
     following::
@@ -85,7 +85,7 @@ class SedDepEroder(Component):
 
     """
 
-    _name = "SedDepEroder"
+    _name = "SedDepEroderDan"
 
     _unit_agnostic = False
 
