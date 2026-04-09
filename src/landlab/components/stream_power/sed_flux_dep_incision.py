@@ -1124,7 +1124,7 @@ class SedDepEroder(Component):
                             # grads, so sed can make it to the bottom of the
                             # pit but no further in a single step, which seems
                             # raeasonable. Pit should fill.
-                            debug = 0
+                            debug = 1
                             # if debug and (i == 1442 or i == 1412):
                             # if debug and i == 1412 or i == 1442:
                             # if dzsoil_here > 2 and i >30:
@@ -1190,6 +1190,8 @@ class SedDepEroder(Component):
                 break_flag = True
                 # AL below, trying to add soil depth to this component.
                 br_elev[grid.core_nodes] += dzbr[grid.core_nodes]
+                print("in sed dep, max dzbr = ", max(dzbr))
+                print(frog)
                 soil_dep[grid.core_nodes] += dzsoil[grid.core_nodes]
                 soil_dep[grid.core_nodes] = soil_dep[grid.core_nodes].clip(0.0)
                 # 2/26/2026 below clipping out negative values of soil depth
