@@ -737,8 +737,8 @@ class SedDepEroder(Component):
             Timestep for which to run the component.
         """
         #AL, below time counter for debugging
-        # self.cumu_time += dt
-        # print("in sed dep, time = ", self.cumu_time)
+        self.cumu_time += dt
+        print("in sed dep, time = ", self.cumu_time)
         soil_dep = self.grid.at_node["soil__depth"]
         br_elev = self.grid.at_node["bedrock__elevation"]
         grid = self._grid
@@ -914,7 +914,11 @@ class SedDepEroder(Component):
                         ],
                     )
                 except NameError:
-                    for i in s_in[::-1]:  # work downstream
+                    # for i in s_in[::-1]:  # work downstream
+                    for (
+                        number_counter,
+                        i,
+                    ) in enumerate(s_in[::-1]):
                         # if self.cumu_time >70 and node_A[i] > 0.0:
                         #     print("area at node "+str(i)+ " = " + str(node_A[i]))
                         cell_area = cell_areas[i]
@@ -1119,21 +1123,31 @@ class SedDepEroder(Component):
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
                             # dz_here = -vol_dropped / cell_area
                             dzsoil_here = vol_dropped / cell_area
+                            elev_diff = node_z[number_counter-1] - node_z[i]
+
                             # with the pits, we aim to inhibit incision, but
                             # depo is OK. We have already zero'd any adverse
                             # grads, so sed can make it to the bottom of the
                             # pit but no further in a single step, which seems
                             # raeasonable. Pit should fill.
-                            debug = 0
+                            debug = 1
                             # if debug and (i == 1442 or i == 1412):
                             # if debug and i == 1412 or i == 1442:
                             # if dzsoil_here > 2 and i >30:
+                            # if debug:
+                            if self.cumu_time >70 and debug and (dzsoil_here > 15) and (i in grid.core_nodes):
+                            # if self.cumu_time >70 and debug and (dzsoil_here > elev_diff):
 
-                            if debug:
                                 print(" ")
                                 
                                 print("in sed dep eroder, sed deposited")
+                                print("self.cumutime = ", self.cumu_time)
                                 print("node = ", i)
+                                print("number_counter = ", number_counter)
+                                print("downstrm node = ", flow_receiver[i])
+                                print("s[::-1][numcounter]", s_in[::-1][number_counter])
+                                print("s[::-1][numcounter - 1]", s_in[::-1][number_counter-1])
+                                print(" ")
                                 print("runoff rate", self._runoff_rate[i])
                                 print("node_A", node_A[i])
                                 print("surface_water__Q", grid.at_node["surface_water__discharge"][i])
@@ -1147,13 +1161,21 @@ class SedDepEroder(Component):
                                 print(" ")
                                 print("rel sed flux = ", rel_sed_flux[i])
                                 print("dzsoil_here = ", dzsoil_here)
+                                print("elev node = ", node_z[i])
+                                print("elev upstrm node = ", node_z[number_counter-1])
+                                print("elev dwnstrm node = ", node_z[flow_receiver[i]])
+                                print("elev diff = ", elev_diff)
                                 print("froggies!!!!")
 
-                                # print(frog)
+                                print(frog)
                                 # if node_vol_capacity > 0:
                                 #     print(frog) 
                                 # if sed_flux_into_this_node > 0:
                                 #     print(frog)
+                                """
+                                20April2026: note that default behavior is
+                                flood_depth=0
+                                """
                             if flood_depth <= 0.0:
                                 vol_pass = node_vol_capacity
                             else:
