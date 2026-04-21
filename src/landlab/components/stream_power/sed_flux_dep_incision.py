@@ -738,7 +738,7 @@ class SedDepEroder(Component):
         """
         #AL, below time counter for debugging
         self.cumu_time += dt
-        print("in sed dep, time = ", self.cumu_time)
+        # print("in sed dep, time = ", self.cumu_time)
         soil_dep = self.grid.at_node["soil__depth"]
         br_elev = self.grid.at_node["bedrock__elevation"]
         grid = self._grid
@@ -1123,59 +1123,15 @@ class SedDepEroder(Component):
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
                             # dz_here = -vol_dropped / cell_area
                             dzsoil_here = vol_dropped / cell_area
-                            elev_diff = node_z[number_counter-1] - node_z[i]
-
+                            """
+                            20April2026: note that default behavior is
+                            flood_depth=0
+                            """
                             # with the pits, we aim to inhibit incision, but
                             # depo is OK. We have already zero'd any adverse
                             # grads, so sed can make it to the bottom of the
                             # pit but no further in a single step, which seems
                             # raeasonable. Pit should fill.
-                            debug = 1
-                            # if debug and (i == 1442 or i == 1412):
-                            # if debug and i == 1412 or i == 1442:
-                            # if dzsoil_here > 2 and i >30:
-                            # if debug:
-                            if self.cumu_time >70 and debug and (dzsoil_here > 15) and (i in grid.core_nodes):
-                            # if self.cumu_time >70 and debug and (dzsoil_here > elev_diff):
-
-                                print(" ")
-                                
-                                print("in sed dep eroder, sed deposited")
-                                print("self.cumutime = ", self.cumu_time)
-                                print("node = ", i)
-                                print("number_counter = ", number_counter)
-                                print("downstrm node = ", flow_receiver[i])
-                                print("s[::-1][numcounter]", s_in[::-1][number_counter])
-                                print("s[::-1][numcounter - 1]", s_in[::-1][number_counter-1])
-                                print(" ")
-                                print("runoff rate", self._runoff_rate[i])
-                                print("node_A", node_A[i])
-                                print("surface_water__Q", grid.at_node["surface_water__discharge"][i])
-                                # print("node vol capacity = ", node_vol_capacity)
-                                print("vol_dropped = ", vol_dropped)
-                                print("sedflux into node = ", sed_flux_into_this_node)
-                                print("node_vol_capacity = ", node_vol_capacity)
-                                # print("sed flux out of node = ", sed_flux_out)
-
-
-                                print(" ")
-                                print("rel sed flux = ", rel_sed_flux[i])
-                                print("dzsoil_here = ", dzsoil_here)
-                                print("elev node = ", node_z[i])
-                                print("elev upstrm node = ", node_z[number_counter-1])
-                                print("elev dwnstrm node = ", node_z[flow_receiver[i]])
-                                print("elev diff = ", elev_diff)
-                                print("froggies!!!!")
-
-                                print(frog)
-                                # if node_vol_capacity > 0:
-                                #     print(frog) 
-                                # if sed_flux_into_this_node > 0:
-                                #     print(frog)
-                                """
-                                20April2026: note that default behavior is
-                                flood_depth=0
-                                """
                             if flood_depth <= 0.0:
                                 vol_pass = node_vol_capacity
                             else:
@@ -1200,6 +1156,71 @@ class SedDepEroder(Component):
                                     flooded_depths[i] = 0.0
                                     # note we must update flooded depths
                                     # transiently to conserve mass
+                            """
+                            below is the block of code where I am preventing deposition of
+                            sediment greater than upstream elevation
+                            """
+                            #First find the lowest elevation upstream donor node.
+                            # current node elevation canno exceed upstream node elevation
+                            #4/21/2026: below the donors are donors from upstream
+                            donors = np.where(grid.at_node["flow__receiver_node"] == i)[0]
+                            donor_elevs = node_z[donors]
+                            try:
+                                upstream_elev = min(donor_elevs)
+                                elev_diff = upstream_elev - node_z[i]
+                                assert elev_diff >= 0, (
+                                    "failed at dan node "
+                                    + str(s_in.size - i)
+                                    + " with abby node "
+                                    + str(i )
+
+                                    )
+                            except:
+                                elev_diff = 0
+                            if dzsoil_here > elev_diff:
+                                downstream_soil = dzsoil_here - elev_diff*0.99
+                                dzsoil_here = elev_diff *0.99
+                                ds_sed_overflow = downstream_soil * cell_area
+                                vol_pass += ds_sed_overflow
+                            debug = 0
+
+
+                            if self.cumu_time >8750 and debug and (i == 364):
+                            # if self.cumu_time >70 and debug and (dzsoil_here > elev_diff):
+
+                                print(" ")
+                                
+                                print("in sed dep eroder, sed deposited")
+                                print("self.cumutime = ", self.cumu_time)
+                                print("node = ", i)
+                                print("number_counter = ", number_counter)
+                                print("downstrm node = ", flow_receiver[i])
+                                # print("s[::-1][numcounter]", s_in[::-1][number_counter])
+                                # print("s[::-1][numcounter - 1]", s_in[::-1][number_counter-1])
+                                print(" ")
+                                print("upstream donors = ", donors)
+                                print("elev upstream donors = ", node_z[donors])
+                                print("elev node = ", node_z[i])
+                                print("elev_diff = ", elev_diff)
+
+                                print("runoff rate", self._runoff_rate[i])
+                                print("node_A", node_A[i])
+                                print("surface_water__Q", grid.at_node["surface_water__discharge"][i])
+                                # print("node vol capacity = ", node_vol_capacity)
+                                print("vol_dropped = ", vol_dropped)
+                                print("sedflux into node = ", sed_flux_into_this_node)
+                                print("node_vol_capacity = ", node_vol_capacity)
+                                print("vol pass = ", vol_pass)
+                                print("ds sed overflow = ", ds_sed_overflow)
+
+
+                                print(" ")
+                                print("rel sed flux = ", rel_sed_flux[i])
+                                print("dzsoil_here = ", dzsoil_here)
+
+                                print("froggies!!!!")
+
+                                print(frog)
                             # do we need to retain a small downhill slope?
                             # ...don't think so. Will resolve itself on next
                             # timestep.
