@@ -315,11 +315,8 @@ class ValleyWiden(Component):
                             # elif avail_trans_cap < pile_volume and rel_sed_flux[i] < 1:
                             elif avail_trans_cap < pile_volume:
 
-                                # print("line 311")
-                                #**Note here I found that if avail trans capacity is 0,
-                                # model will still go through this loop. This is not a problem
-                                # except it's inefficient. I fixed it by addign the and
-                                #statment above.
+                                # model still needs to go through this loop even if avail trans cap is zero
+                                # will give dzlat=0
                                 #use all available trans capacity to move as much
                                 # pile as possible
                                 # note I use negative availtranscap to make dzlat a negative number
@@ -327,6 +324,7 @@ class ValleyWiden(Component):
                                 dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, (z[flow_receiver[i]] - z[lat_node] +0.0005))
                                 # ^ this will give the elevation that can be removed from 
                                 # the pile of stuff that is the lateral node.
+
                                 """
                                 COMMENTED OUT LINE BELOW FOR TEST
                                 MAY 9, 2022, 3:10 PM
