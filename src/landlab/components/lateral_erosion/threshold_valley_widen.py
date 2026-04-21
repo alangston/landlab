@@ -144,7 +144,7 @@ class ValleyWiden(Component):
                 self._dzlat_ts = grid.at_node["dzlat_ts"]
             else:
                 self._dzlat_ts = grid.add_zeros("dzlat_ts", at="node")
-
+        self.cumu_time = 0
         self._Kl = Kl  # can be overwritten with spatially variable
         self.g = g
         self._b_sde = b_sde
@@ -200,7 +200,10 @@ class ValleyWiden(Component):
         grid.at_node["channel_sediment__volumetric_transport_capacity"] = new_transport_capacities
         z = grid.at_node["topographic__elevation"]
 
-
+        self.cumu_time += dt
+        # print(" ")
+        # print("in sed dep, time = ", self.cumu_time)
+        
         # clear qsin for next loop
         if "inlet_sediment__flux" in grid.at_node:
             # qs_in = np.copy(self._grid.at_node["inlet_sediment__flux"])
@@ -244,6 +247,7 @@ class ValleyWiden(Component):
         """
         for i in dwnst_nodes:
             # potential lateral erosion initially set to 0
+            # print("node = ", i)
             petlat = 0.0
             # Choose lateral node for node i. If node i flows downstream, continue.
             # if node i is the first cell at the top of the drainage network, don't go
@@ -257,18 +261,20 @@ class ValleyWiden(Component):
                     ### below v ARE YOU BLOCKS OR BEDROCK?
                     debug3=0
                     debug=0
+
                     if block_size[lat_node] > 0.0:
                         #^ if block size >0.0, you are blocks, not bedrock
                         tau_crit = block_size[lat_node]*self.g * (self.sed_density - self.fluid_density) * self.shields_thresh
                         #calc, can blocks be transported?
                         if channel__bed_shear_stress[i] > tau_crit:
-                            if debug3 and lat_node == 366:
-                                print(" ")
-                                print("depth_at_node", depth_at_node)
-                                print("lat_node", lat_node)
-                                print("blocks can transport")
-                                print("tau", channel__bed_shear_stress[i])
-                                print("taucrit", tau_crit)
+                            # print("line 265")
+                            # if debug3 and lat_node == 366:
+                            #     print(" ")
+                            #     print("depth_at_node", depth_at_node)
+                            #     print("lat_node", lat_node)
+                            #     print("blocks can transport")
+                            #     print("tau", channel__bed_shear_stress[i])
+                            #     print("taucrit", tau_crit)
     #                            print(frog)
                             #if blocks transported, do it.
                             # volume of pile of stuff
@@ -278,14 +284,16 @@ class ValleyWiden(Component):
                             # below is the conversion of trans capacity into m^3/model time step
                             transcap_here_ts = chan_trans_cap[i]*dt*self.sec_per_year
                             avail_trans_cap = transcap_here_ts * (1.0-rel_sed_flux[i])
-                            if debug3 and lat_node == 366:
-                                print(" ")
-                                print("pile volume", pile_volume)
-                                print("trans cap here", chan_trans_cap[i])
-                                print("transcaphere_ts", transcap_here_ts)
-                                print("avail trans cap", avail_trans_cap)
-                                print("dt", dt)
+                            # if debug3 and lat_node == 366:
+                            #     print(" ")
+                            #     print("pile volume", pile_volume)
+                            #     print("trans cap here", chan_trans_cap[i])
+                            #     print("transcaphere_ts", transcap_here_ts)
+                            #     print("avail trans cap", avail_trans_cap)
+                            #     print("dt", dt)
                             if avail_trans_cap >= pile_volume:
+                                # print("line 290")
+
                                 #if all sediment from lateral erosion can be transported
                                 # by teh channel, send it all down stream
                                 vol_pass = pile_volume 
@@ -304,7 +312,10 @@ class ValleyWiden(Component):
                                 status_lat_nodes[lat_node] = 5
                                 if debug3 and lat_node == 438:
                                     print("entire pile transported")
-                            elif avail_trans_cap < pile_volume and rel_sed_flux[i] < 1:
+                            # elif avail_trans_cap < pile_volume and rel_sed_flux[i] < 1:
+                            elif avail_trans_cap < pile_volume:
+
+                                # print("line 311")
                                 #**Note here I found that if avail trans capacity is 0,
                                 # model will still go through this loop. This is not a problem
                                 # except it's inefficient. I fixed it by addign the and
@@ -330,20 +341,21 @@ class ValleyWiden(Component):
                                 status_lat_nodes[lat_node] = 4
                                 if debug3 and lat_node == 438:
                                     print("entire pile NOT transported")
-                            if debug3 and lat_node == 438:
-                                print(" ")
-                                print("downstream node", flow_receiver[i])
-                                print("qs_in[flow_receiver[i]]", qs_in[flow_receiver[i]])
-                                print("transcap", transcap_here_ts)
-                                print("relsedflux", rel_sed_flux[i])
-                                print("avail_trans_cap", avail_trans_cap)
-                                print("pile_vol", pile_volume)
-                                print("dzlat[latnode]", dzlat_ts[lat_node])
-                                print("z[latnode]",z[lat_node])
-                                print("z[i]",z[i])
+                            # if debug3 and lat_node == 438:
+                            #     print(" ")
+                            #     print("downstream node", flow_receiver[i])
+                            #     print("qs_in[flow_receiver[i]]", qs_in[flow_receiver[i]])
+                            #     print("transcap", transcap_here_ts)
+                            #     print("relsedflux", rel_sed_flux[i])
+                            #     print("avail_trans_cap", avail_trans_cap)
+                            #     print("pile_vol", pile_volume)
+                            #     print("dzlat[latnode]", dzlat_ts[lat_node])
+                            #     print("z[latnode]",z[lat_node])
+                            #     print("z[i]",z[i])
 #                                print(frog)
                         #if blocks can't be transported: calc Elat, track undercutting
                         else:    # below is for blocks that can't be transported
+                            # print("line 351")
                             petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
                             vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
                             vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
@@ -375,6 +387,7 @@ class ValleyWiden(Component):
                                     block_size[lat_node] = 0.0
 
                     else:    # below is for fresh bedrock valley walls
+                        # print("line 378")
                         petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
                         vol_lat[lat_node] += vol_lat_dt[lat_node] * dt                        
@@ -437,6 +450,8 @@ class ValleyWiden(Component):
                                 print("dt", dt)
                                 print(frog)
                     #below is where sed_into_node is updated
+                    # print("in lat ero, vol_pass = ", vol_pass)
+                    # print(" ")
                     sed_into_node[flow_receiver[i]] += vol_pass
 #                        print("qs_in[flow_receiver[i]] AFTER", qs_in[flow_receiver[i]])
 #        qs[:] = qs_in
