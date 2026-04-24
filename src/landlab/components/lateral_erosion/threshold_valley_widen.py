@@ -199,7 +199,7 @@ class ValleyWiden(Component):
         # 3/3/2026: above new_transport_capacities is trans capcity to transport laterally eroded blocks... 
         grid.at_node["channel_sediment__volumetric_transport_capacity"] = new_transport_capacities
         z = grid.at_node["topographic__elevation"]
-
+        br_elev = grid.at_node["bedrock__elevation"]
         self.cumu_time += dt
         # print(" ")
         # print("in sed dep, time = ", self.cumu_time)
@@ -256,7 +256,7 @@ class ValleyWiden(Component):
                 [lat_node, inv_rad_curv] = node_finder(grid, i, flow_receiver, node_A)
                 # node_finder returns the lateral node ID and the radius of curvature
                 lat_nodes[i] = lat_node
-                if lat_node > 0 and z[lat_node] > z[i]:
+                if lat_node > 0 and z[lat_node] > br_elev[i]:
                     # ^ if the elevation of the lateral node is higher than primary node, keep going
                     ### below v ARE YOU BLOCKS OR BEDROCK?
                     debug3=0
@@ -280,7 +280,7 @@ class ValleyWiden(Component):
                             # volume of pile of stuff
                             #may 10, 2022, changed this to the pile volume between the node that is downstream of 
                                 # the primary node and lateral node, not pile volume between primary and lateral. 
-                            pile_volume = (z[lat_node] - z[flow_receiver[i]]) * grid.dx ** 2
+                            pile_volume = (br_elev[lat_node] - z[flow_receiver[i]]) * grid.dx ** 2
                             # below is the conversion of trans capacity into m^3/model time step
                             transcap_here_ts = chan_trans_cap[i]*dt*self.sec_per_year
                             avail_trans_cap = transcap_here_ts * (1.0-rel_sed_flux[i])
@@ -306,7 +306,7 @@ class ValleyWiden(Component):
                                 #may 10, 2022, changed this to the elevation diff between the node that is downstream of 
                                 # the primary node and lateral node, not elev diff between primary and lateral. 
                                 # plus half mm to prevent hole digging
-                                dzlat_ts[lat_node] = z[flow_receiver[i]] - z[lat_node] + 0.0005
+                                dzlat_ts[lat_node] = z[flow_receiver[i]] - br_elev[lat_node] + 0.0005
                                 #finally, reset block size to reflect fresh bedrock
                                 block_size[lat_node] = 0.0
                                 status_lat_nodes[lat_node] = 5
@@ -321,7 +321,7 @@ class ValleyWiden(Component):
                                 # pile as possible
                                 # note I use negative availtranscap to make dzlat a negative number
                                 # may 10, 2022. plus half mm to prevent hole digging
-                                dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, (z[flow_receiver[i]] - z[lat_node] +0.0005))
+                                dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, (z[flow_receiver[i]] - br_elev[lat_node] +0.0005))
                                 # ^ this will give the elevation that can be removed from 
                                 # the pile of stuff that is the lateral node.
 
@@ -356,11 +356,18 @@ class ValleyWiden(Component):
                             # print("line 351")
                             petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
                             vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
+                            #  4/23/26: check line below
                             vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
                             # vol_diff is the volume that must be eroded from lat_node so that its
                             # elevation is the same as node downstream of primary node
     #                        voldiff = (z[i] + depth_at_node[i] - z[flow_receiver[i]]) * grid.dx ** 2
-                            voldiff = depth_at_node[i] * grid.dx ** 2
+                            # voldiff = depth_at_node[i] * grid.dx ** 2
+                            """4/23/2026**** CHECK BELOW! CHANGING!
+                            the line above wtih voldiff calculated with depth at node, i don't like! 
+                            why constantly changing voldiff based on depth at node?
+                            I will make this be an arbitrary 10% of bedrock elevation height
+                            """
+                            voldiff = br_elev[lat_node] * grid.dx ** 2 * 0.1
                             # below, send sediment downstream, units of volume
                             # 3/3/2026 FIX! CHECK THIS BELOW
                             vol_pass = (abs(petlat) * grid.dx * depth_at_node[i]) * dt
@@ -399,11 +406,14 @@ class ValleyWiden(Component):
                         
                         3/3/2026: FIX, how voldiff is calculated, check depth_at_node.
                         depth_at_node is from dan's sed_flux component, along with trans capacity, etc.
+                        
+                        4/23/26: i currently have voldiff = (depth_at_node[i]) * grid.dx ** 2
+                        but i'm changing back to the original way with a percentage of the lateral node.'
                         """
                         # vol_diff is the volume that must be eroded from lat_node so that its
                         # elevation is the same as primary node
-                        voldiff = (depth_at_node[i]) * grid.dx ** 2
-                        # voldiff = (z[lat_node] - z[i]) * grid.dx **2 * 0.1
+                        # voldiff = (depth_at_node[i]) * grid.dx ** 2
+                        voldiff = (br_elev[lat_node] - z[i]) * grid.dx **2 * 0.1
 
                         status_lat_nodes[lat_node] = 1
                         #^node status=1 means that now this br valley wall has experienced some erosion
@@ -469,7 +479,8 @@ class ValleyWiden(Component):
             grid.at_node["dzlat_ts"][:] = dzlat_ts
         #**AL: 11/18/21: added the above few lines to save lateral erosion per timestep
         # change height of landscape by just removing laterally eroded stuff.
-        z[:] += dzlat_ts
+        # z[:] += dzlat_ts
+        br_elev[:] += dzlat_ts
 #        print("z in lat", z)
         return grid
 
