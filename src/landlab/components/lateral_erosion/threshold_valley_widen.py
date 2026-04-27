@@ -461,6 +461,10 @@ class ValleyWiden(Component):
                     # print("in lat ero, vol_pass = ", vol_pass)
                     # print(" ")
                     sed_into_node[flow_receiver[i]] += vol_pass
+                    if np.any(sed_into_node < 0):
+                        print("we got a zero in qs_in, line 465")
+                        print(" ")
+                        print(frog)
 #                        print("qs_in[flow_receiver[i]] AFTER", qs_in[flow_receiver[i]])
 #        qs[:] = qs_in
         debug2=0
