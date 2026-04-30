@@ -78,7 +78,8 @@ class LateralErosionSedDep(Component):
         discharge_field="surface_water__discharge",
         solver="basic",
         flow_accumulator=None,
-        K_sed = None
+        K_sed = None, 
+        undercut_ero_factor = 0.1
     ):
         super(LateralErosionSedDep, self).__init__(grid)
 
@@ -169,6 +170,7 @@ class LateralErosionSedDep(Component):
         self._Kl = np.ones(self._grid.number_of_nodes, dtype=float) * Kl
         self._A = return_array_at_node(grid, discharge_field)
         self._slope = grid.at_node["topographic__steepest_slope"]
+        self._undercut_ero_factor = undercut_ero_factor
 
         ###^^^***** april 25, 2022 above from stream_power AND my new additions
         # to sed_flux_dependent_incision
@@ -190,6 +192,7 @@ class LateralErosionSedDep(Component):
         Kl = self._Kl
         vol_lat = self._grid.at_node["volume__lateral_erosion"]
         K_sed = self._K_sed
+        undercut_ero_factor = self._undercut_ero_factor
         """
         trying this to fix hole digging because of qsin = nan because depth 
         at node = nan because of Dan's sneakiness! in sed flux dependent.
@@ -271,7 +274,7 @@ class LateralErosionSedDep(Component):
                         # elevation is the same as primary node
                         # voldiff = (depth_at_node[i]) * grid.dx ** 2
                         #^ above is the original way, when collapse happens when volume of bedrock upto water level is eroded
-                        voldiff = (z_br[lat_node] - z[i]) * grid.dx **2 * 0.1
+                        voldiff = (z_br[lat_node] - z[i]) * grid.dx **2 * undercut_ero_factor
                         # i like this one better because it depends more on the height of the cliff rather than the the waterleve
                         # bc water level can change
 
@@ -398,7 +401,6 @@ class LateralErosionSedDep(Component):
         self.grid.at_node["lateral_sediment__influx"][:] = lat_sed_influx
         if "dzlat_ts" in grid.at_node:
             grid.at_node["dzlat_ts"][:] = dzlat_ts
-        #**AL: 11/18/21: added the above few lines to save lateral erosion per timestep
         
         # change height of landscape by just removing laterally eroded stuff.
         sed_depth[:] += dzsed_ts
