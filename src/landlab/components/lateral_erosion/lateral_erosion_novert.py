@@ -252,8 +252,7 @@ class LateralErosionSedDep(Component):
         #ALL***: below is only for finding the lateral node
         """
         for i in dwnst_nodes:
-            # potential lateral erosion initially set to 0
-            petlat = 0.0
+
             # Choose lateral node for node i. If node i flows downstream, continue.
             # if node i is the first cell at the top of the drainage network, don't go
             # into this loop because in this case, node i won't have a "donor" node
@@ -263,6 +262,8 @@ class LateralErosionSedDep(Component):
                 lat_nodes[i] = lat_node
                 
                 if lat_node > 0 and z[lat_node] > z[i]:
+                    # potential lateral erosion initially set to 0
+                    petlat = 0.0
                     if z_br[lat_node] > z[i]:
                     # ^ if the elevation of the lateral node BEDROCK (NOV 2025) is higher than primary node, keep going
 
@@ -380,16 +381,7 @@ class LateralErosionSedDep(Component):
                             ero_soil = 0
 
                         dzsed_ts[lat_node] += ero_soil
-                        # if np.any(dzsed_ts<0)==True:
-                            
-                        #     print(np.where(dzsed_ts))
-                        #     print("we got soil depth less than zero")
-                        #     print(frog)
-                            # vol_latsed_dt[lat_node] += abs(petlatsed) * grid.dx * depth_at_node[i]
-                    # send sediment downstream. for bedrock erosion only
-                    """
-                    May11, remove lat_sed_influx
-                    """
+
                     lat_sed_influx[flowdirs[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
                     if np.any(np.isnan(lat_sed_influx))==True:
                             print("we got a nan in lat_sed_influx, line 397")
