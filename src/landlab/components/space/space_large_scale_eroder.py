@@ -555,7 +555,12 @@ class SpaceLargeScaleEroder(Component):
         self._Er[flooded_nodes] = 0.0
         self._sed_erosion_term[flooded_nodes] = 0.0
         self._br_erosion_term[flooded_nodes] = 0.0
-
+        """
+        AL 30april2026: note that the below DOES work with lateral erosion. 
+        Also, if you want to have an inlet with sediment flux, you have to instantiate
+        lateral erosion simply to use the lateral sediment influx. But then don't
+        actually use lateral erosion in teh driver file.
+        """
         if "lateral_sediment__influx" in self.grid.at_node:
             self.sediment_influx[:] = self.grid.at_node["lateral_sediment__influx"]
             #print("in space, lateral sedflux detected")
