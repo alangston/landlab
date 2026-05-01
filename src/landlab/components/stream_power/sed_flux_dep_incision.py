@@ -379,17 +379,7 @@ class SedDepEroder(Component):
                 "route-to-multiple methods. Please open a GitHub Issue "
                 "to start this process."
             )
-        self._soil__depth = grid.at_node["soil__depth"]
-        # if "bedrock__elevation" in grid.at_node:
-        #     self._bedrock__elevation = grid.at_node["bedrock__elevation"]
-        # else:
-        #     self._bedrock__elevation = grid.add_zeros(
-        #         "bedrock__elevation", at="node", dtype=float
-        #     )
 
-        #     self._bedrock__elevation[:] = (
-        #         self._topographic__elevation - self._soil__depth
-        #     )
         self._flooded_depths = flooded_depths
         self._pseudoimplicit_repeats = pseudoimplicit_repeats
 
@@ -721,7 +711,6 @@ class SedDepEroder(Component):
         dt : float (years, only!)
             Timestep for which to run the component.
         """
-        soil_dep = self.grid.at_node["soil__depth"]
 
         grid = self._grid
         node_z = grid.at_node["topographic__elevation"]
@@ -933,7 +922,7 @@ class SedDepEroder(Component):
                             rel_sed_flux[i] = 1.0
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
                             # dz_here = -vol_dropped / cell_area
-                            soil_dep_here = -vol_dropped / cell_area
+                            dz_here = -vol_dropped / cell_area
                             # with the pits, we aim to inhibit incision, but
                             # depo is OK. We have already zero'd any adverse
                             # grads, so sed can make it to the bottom of the
@@ -942,19 +931,19 @@ class SedDepEroder(Component):
                             if flood_depth <= 0.0:
                                 vol_pass = node_vol_capacity
                             else:
-                                height_excess = -soil_dep_here - flood_depth
+                                height_excess = -dz_here - flood_depth
                                 # ...above water level
                                 if height_excess <= 0.0:
                                     vol_pass = 0.0
-                                    # soil_dep_here is already correct
-                                    flooded_depths[i] += soil_dep_here
+                                    # dz_here is already correct
+                                    flooded_depths[i] += dz_here
                                 else:
-                                    soil_dep_here = -flood_depth
+                                    dz_here = -flood_depth
                                     """
                                     Adding/trying this on May 10, 2022. AL
                                     to fix hole digging/weird deposition
                                     """
-                                    soil_dep_here = 0.0  
+                                    dz_here = 0.0  
                                     vol_pass = height_excess * cell_area
                                     # ^bit cheeky?
                                     flooded_depths[i] = 0.0
@@ -963,16 +952,16 @@ class SedDepEroder(Component):
                             # do we need to retain a small downhill slope?
                             # ...don't think so. Will resolve itself on next
                             # timestep.
-                        #AL: below dz is going to be bedrock erosion and soil_dep is soil depth
+                            
                         dz[i] -= dz_here
-                        soil_dep[i] += soil_dep_here
+                        
                         #below is where sed_int_node is updated
                                        
                         sed_into_node[flow_receiver[i]] += vol_pass
 
                 break_flag = True
-                # AL below, trying to add soil depth to this component.
-                node_z[grid.core_nodes] = node_z[grid.core_nodes] + dz[grid.core_nodes] + soil_dep[grid.core_nodes]
+
+                node_z[grid.core_nodes] += dz[grid.core_nodes]
 
                 if break_flag:
                     break
