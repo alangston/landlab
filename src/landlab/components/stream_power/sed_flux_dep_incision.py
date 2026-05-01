@@ -248,6 +248,9 @@ class SedDepEroder(Component):
         return_stream_properties=False,
         # flooded node info
         flooded_depths=None,
+        inlet_node_ID=None,
+        inlet_sedflux=None,
+        lateral_erosion_active = False
     ):
         """Constructor for the class.
 
@@ -379,7 +382,10 @@ class SedDepEroder(Component):
                 "route-to-multiple methods. Please open a GitHub Issue "
                 "to start this process."
             )
-
+        self._inlet_node_ID = inlet_node_ID
+        self._inlet_sedflux = inlet_sedflux
+        self._lateral_erosion_active = lateral_erosion_active
+        
         self._flooded_depths = flooded_depths
         self._pseudoimplicit_repeats = pseudoimplicit_repeats
 
@@ -576,7 +582,8 @@ class SedDepEroder(Component):
         self._cell_areas = np.empty(grid.number_of_nodes)
         self._cell_areas.fill(np.mean(grid.area_of_cell))
         self._cell_areas[grid.node_at_cell] = grid.area_of_cell
-
+        ##below AL3/5/2026
+        self.cumu_time = 0
         # set up the necessary fields:
         self.initialize_output_fields()
         if self._return_ch_props:
@@ -711,10 +718,30 @@ class SedDepEroder(Component):
         dt : float (years, only!)
             Timestep for which to run the component.
         """
-
+        #AL, below time counter for debugging
+        self.cumu_time += dt
         grid = self._grid
         node_z = grid.at_node["topographic__elevation"]
-        node_A = grid.at_node["drainage_area"]
+        # 3/3/2026
+        node_A = self._A/self._runoff_rate
+        # node_A = grid.at_node["drainage_area"]
+        if self._inlet_node_ID is not None:
+            print(" ")
+
+            al_hack_factor = self._runoff_rate[self._inlet_node_ID]/self._runoff_rate[0]
+            # print("runoff rate before = ",self._runoff_rate[self._inlet_node_ID] )
+            # print("node A before = ", node_A[self._inlet_node_ID])
+            # print("1412 runoff rate before = ",self._runoff_rate[1412] )
+            # print("1412 node A before = ", node_A[1412])
+            # self._runoff_rate[self._inlet_node_ID] =self._runoff_rate[self._inlet_node_ID]/al_hack_factor
+            # node_A[self._inlet_node_ID] = node_A[self._inlet_node_ID] *al_hack_factor
+            self._runoff_rate[self._inlet_node_ID] =self._runoff_rate[self._inlet_node_ID]/al_hack_factor
+            node_A[self._inlet_node_ID] = node_A[self._inlet_node_ID] *al_hack_factor
+            # print("runoff rate after = ",self._runoff_rate[self._inlet_node_ID] )
+            # print(" node A after = ", node_A[self._inlet_node_ID])
+            # print("al hack factor = ", al_hack_factor)
+            # print(" ")
+            # print(frog)
         flow_receiver = grid.at_node["flow__receiver_node"]
         s_in = grid.at_node["flow__upstream_node_order"]
         node_S = grid.at_node["topographic__steepest_slope"]
@@ -837,11 +864,16 @@ class SedDepEroder(Component):
                 #ALL***: below, if we send sediment to vertical erosion because lateral
                 # erosion is running, do not initialize this as zeros. use the
                 # values sent to the component instead.
-                if "lateral_sediment__flux" in grid.at_node:
+                if self._lateral_erosion_active:
                     sed_into_node = self._grid.at_node["lateral_sediment__flux"]
                 else:
                     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)                                                                       
-
+                    for (
+                        number_counter,
+                        i,
+                    ) in enumerate(s_in[::-1]):
+                        # if self.cumu_time >70 and node_A[i] > 0.0:
+                        #     print("area at node "+str(i)+ " = " + str(node_A[i]))
                 sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self._cell_areas
@@ -862,16 +894,26 @@ class SedDepEroder(Component):
                         ],
                     )
                 except NameError:
-                    for i in s_in[::-1]:  # work downstream
+                    # for i in s_in[::-1]:  # work downstream
+                    for (
+                        number_counter,
+                        i,
+                    ) in enumerate(s_in[::-1]):
+                        # if self.cumu_time >70 and node_A[i] > 0.0:
+                        #     print("area at node "+str(i)+ " = " + str(node_A[i]))
                         cell_area = cell_areas[i]
                         if flooded_nodes is not None:
                             flood_depth = flooded_depths[i]
                         else:
                             flood_depth = 0.0
                         sed_flux_into_this_node = sed_into_node[i]
+                        # 2/26/2026: sed_into_node is the variable name for 
+                        # "channel_sediment__volumetric_flux"
                         node_capacity = transport_capacities[i]
                         # ^we work in volume flux, not volume per se here
                         node_vol_capacity = node_vol_capacities[i]
+                        #above, node_vol_capacities is transport capcacities
+                        # multiplied by timestep.
                         dz_here = 0    #AL added this here to prevent error 17october
                         if flood_depth > 0.0:
                             node_vol_capacity = 0.0
@@ -921,7 +963,10 @@ class SedDepEroder(Component):
                             # AL: Above, sediment coming into node is greater than capacity. so some sed will be deposited (dz_here in Dan's version)
                             rel_sed_flux[i] = 1.0
                             vol_dropped = sed_flux_into_this_node - node_vol_capacity
-                            # dz_here = -vol_dropped / cell_area
+                            """
+                            20April2026: note that default behavior is
+                            flood_depth=0
+                            """
                             dz_here = -vol_dropped / cell_area
                             # with the pits, we aim to inhibit incision, but
                             # depo is OK. We have already zero'd any adverse
