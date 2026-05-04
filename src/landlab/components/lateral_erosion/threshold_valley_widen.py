@@ -86,6 +86,8 @@ class ValleyWiden(Component):
         Qs_power_onAthresh = 0.33333333333333,    #from sedflux dep eroder
         Qs_prefactor = 3.5972042802486196e-7,    #from sedflux dep eroder
         Qs_power_onA = 0.6333333333333333,    #from sedflux dep eroder
+        inlet_node_ID=None,
+        inlet_sedflux=None
     ):
         super(ValleyWiden, self).__init__(grid)
 
@@ -272,7 +274,8 @@ class ValleyWiden(Component):
                             # volume of pile of stuff
                             #may 10, 2022, changed this to the pile volume between the node that is downstream of 
                                 # the primary node and lateral node, not pile volume between primary and lateral. 
-                            pile_volume = (z[lat_node] - z[flow_receiver[i]]) * grid.dx ** 2
+                            #May 4 2026: changed back to difference in elevation between lateral node and primary node
+                            pile_volume = (z[lat_node] - z[i]) * grid.dx ** 2
                             # below is the conversion of trans capacity into m^3/model time step
                             transcap_here_ts = chan_trans_cap[i]*dt*self.sec_per_year
                             avail_trans_cap = transcap_here_ts * (1.0-rel_sed_flux[i])
@@ -288,11 +291,20 @@ class ValleyWiden(Component):
                                 # by teh channel, send it all down stream
                                 # qs_in[flow_receiver[i]] += pile_volume 
                                 vol_pass = pile_volume
-                                if np.any(np.isnan(qs_in))==True:
+                                if np.any(np.isnan(vol_pass))==True or vol_pass < 0:
                                     print("we got a nan in qs_in, line 288")
-                                    print("time = ", precip.elapsed_time)
-                                    toc=time.time()
-                                    print("elapsed time = ", toc-tic)
+                                    print("vol_pass = ", vol_pass)
+                                    print("lat_node", lat_node)
+                                    print("z[i]", z[i])
+                                    print("z[lat_node]", z[lat_node])
+                                    print("z[flow_receiver[i]]",z[flow_receiver[i]])
+                                    print("pile volume", pile_volume)
+                                    print("trans cap here", chan_trans_cap[i])
+                                    print("transcaphere_ts", transcap_here_ts)
+                                    print("avail trans cap", avail_trans_cap)
+                                    # print("time = ", precip.elapsed_time)
+                                    # toc=time.time()
+                                    # print("elapsed time = ", toc-tic)
                                     print(frog)
                                 # then calculate how much elevation will be lost on teh lateral node
                                 # from that downstream transport
@@ -306,7 +318,7 @@ class ValleyWiden(Component):
                                 if debug3 and lat_node == 438:
                                     print("entire pile transported")
                             # elif avail_trans_cap < pile_volume and rel_sed_flux[i] < 1:
-                            elif avail_trans_cap < pile_volume:                            
+                            elif avail_trans_cap < pile_volume:
                                 # model still needs to go through this loop even if avail trans cap is zero
                                 # will give dzlat=0
                                 #use all available trans capacity to move as much
@@ -316,15 +328,13 @@ class ValleyWiden(Component):
                                 dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, (z[flow_receiver[i]] - z[lat_node] +0.0005))
                                 # ^ this will give the elevation that can be removed from 
                                 # the pile of stuff that is the lateral node.
-                                """
-                                COMMENTED OUT LINE BELOW FOR TEST
-                                MAY 9, 2022, 3:10 PM
-                                """
                                 # qs_in[flow_receiver[i]] += avail_trans_cap
                                 vol_pass= avail_trans_cap
 
-                                if np.any(np.isnan(qs_in))==True:
+                                if np.any(np.isnan(vol_pass))==True or vol_pass < 0:
                                     print("we got a nan in qs_in, line 316")
+                                    print("vol_pass = ", vol_pass)
+
                                     print("time = ", precip.elapsed_time)
                                     toc=time.time()
                                     print("elapsed time = ", toc-tic)
@@ -363,8 +373,10 @@ class ValleyWiden(Component):
                             # below, send sediment downstream, units of volume
                             # 3/3/2026 FIX! CHECK THIS BELOW
                             vol_pass = (abs(petlat) * grid.dx * depth_at_node[i]) * dt
-                            if np.any(np.isnan(qs_in))==True:
+                            if np.any(np.isnan(vol_pass))==True or vol_pass < 0:
                                 print("we got a nan in qs_in, line 347")
+                                print("vol_pass = ", vol_pass)
+
                                 print("time = ", precip.elapsed_time)
                                 toc=time.time()
                                 print("elapsed time = ", toc-tic)
@@ -427,8 +439,11 @@ class ValleyWiden(Component):
                         # send sediment downstream. for bedrock erosion only
                         # qs_in[flow_receiver[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
                         vol_pass = (abs(petlat) * grid.dx * depth_at_node[i]) * dt
-                        if np.any(np.isnan(qs_in))==True:
+                        # if np.any(np.isnan(qs_in))==True:
+                        if np.any(np.isnan(vol_pass))==True or vol_pass < 0:
+
                                 print("we got a nan in qs_in, line 397")
+                                print("vol_pass = ", vol_pass)
                                 print(" ")
                                 print("downstream node", flow_receiver[i])
                                 print("qs_in[flow_receiver[i]]", qs_in[flow_receiver[i]])
@@ -458,6 +473,8 @@ class ValleyWiden(Component):
                     sed_into_node[flow_receiver[i]] += vol_pass
                     if np.any(sed_into_node < 0):
                         print("we got a zero in qs_in, line 465")
+                        print("sed into node = 0 at locs: ", np.where(sed_into_node < 0)[0])
+                        print("sedintonode negative = ", sed_into_node[np.where(sed_into_node < 0)[0]])
                         print(" ")
                         print(frog)
         debug2=0
@@ -467,6 +484,10 @@ class ValleyWiden(Component):
 #            print("status latnodes", status_lat_nodes)
             print("dzlat_ts", dzlat_ts)
 #            print(frog)
+        # below, store the sediment eroded in this component as lateral sed flux
+        grid.at_node["lateral_sediment__flux"] = sed_into_node
+        # we want to be able to see the total sediment flux in the output, so 
+        # add lateral sed (sed_into_node) to total sed, below
         grid.at_node["channel_sediment__volumetric_flux"][:] += sed_into_node
         grid.at_node["lateral_erosion__depth_cum"][:] += dzlat_ts
         #^ AL: this only keeps track of cumulative lateral erosion at each cell.
