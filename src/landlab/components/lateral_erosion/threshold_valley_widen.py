@@ -298,7 +298,7 @@ class ValleyWiden(Component):
                                 # plus half mm to prevent hole digging
                                 # dzlat_ts[lat_node] = z[flow_receiver[i]] - z[lat_node] + 0.0005
                                 #4 May 2026: changed this line from above. 
-                                dzlat_ts[lat_node] = z[lat_node] - z[i]
+                                dzlat_ts[lat_node] = z[i] - z[lat_node]
                                 #finally, reset block size to reflect fresh bedrock
                                 block_size[lat_node] = 0.0
                                 status_lat_nodes[lat_node] = 5
@@ -310,9 +310,7 @@ class ValleyWiden(Component):
                                 # will give dzlat=0
                                 #use all available trans capacity to move as much
                                 # pile as possible
-                                # note I use negative availtranscap to make dzlat a negative number
-                                # may 10, 2022. plus half mm to prevent hole digging
-                                dzlat_ts[lat_node] = min(avail_trans_cap / grid.dx **2, (z[lat_node] - z[i]))
+                                dzlat_ts[lat_node] = min(avail_trans_cap / grid.dx **2, (z[lat_node] - z[i])) * -1
                                 # ^ this will give the elevation that can be removed from 
                                 # the pile of stuff that is the lateral node.
                                 # qs_in[flow_receiver[i]] += avail_trans_cap
@@ -334,16 +332,15 @@ class ValleyWiden(Component):
                         #if blocks can't be transported: calc Elat, track undercutting
                         else:    # below is for blocks that can't be transported
                             petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
-                            vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
-                            vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
+                            dzlat_ts[lat_node] = petlat * dt
+                            # vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
+                            # vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
                             # vol_diff is the volume that must be eroded from lat_node so that its
                             # elevation is the same as node downstream of primary node
-                            """4/23/2026**** CHECK BELOW! CHANGING!
-                            the line above wtih voldiff calculated with depth at node, i don't like! 
-                            why constantly changing voldiff based on depth at node?
-                            I will make this be an arbitrary 10% of bedrock elevation height
+                            """5/4/2026: removed the second collapse. now just shrinking elevation
+                            of lateral node bit by bit. 
                             """
-                            voldiff = z[lat_node] * grid.dx ** 2 * undercut_ero_factor
+                            # voldiff = z[lat_node] * grid.dx ** 2 * undercut_ero_factor
                             # below, send sediment downstream, units of volume
                             # 3/3/2026 FIX! CHECK THIS BELOW
                             vol_pass = (abs(petlat) * grid.dx * depth_at_node[i]) * dt
@@ -352,18 +349,6 @@ class ValleyWiden(Component):
                                 print("vol_pass = ", vol_pass)
                                 print(frog)
                             status_lat_nodes[lat_node] = 3
-                            if debug3 and lat_node == 438:
-                                print("blocks can't transport")
-                            #*******WILL VALLEY WALL COLLAPSE again?
-                            if vol_lat[lat_node] >= voldiff:
-                                dzlat_ts[lat_node] = depth_at_node[i] * -1.0
-                                # ^ Change elevation of lateral node by the length undercut
-                                vol_lat[lat_node] = 0.0
-                                # ^after the lateral node is eroded, reset its volume eroded to
-                                # zero
-                                ####HAVE ALL BLOCKS BEEN ERODED? compare lat and primary node within 5mm
-                                if np.isclose(z[lat_node], z[i], atol=0.005):
-                                    block_size[lat_node] = 0.0
 
                     else:    # below is for fresh bedrock valley walls
                         petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
@@ -396,6 +381,24 @@ class ValleyWiden(Component):
                     #below is where sed_into_node is updated
                     # print("in lat ero, vol_pass = ", vol_pass)
                     # print(" ")
+                    debug3 = 0
+                    if debug3:
+                        print(" ")
+                        print("lat_node", lat_node)
+                        print("vol_pass = ", vol_pass)
+                        print("z[latnode]",z[lat_node])
+                        print("z[i]",z[i])
+                        print("dzlat[latnode]", dzlat_ts[lat_node])
+                        print("status_lat_nodes[lat_node] ", status_lat_nodes[lat_node])
+                        # print("transcap", transcap_here_ts)
+                        # print("relsedflux", rel_sed_flux[i])
+
+                        if dzlat_ts[lat_node] > 0:
+                            print(frogface)
+                        if dzlat_ts[lat_node] < -10:
+                            print("avail_trans_cap", avail_trans_cap)
+                            print("pile_vol", pile_volume)
+                            print(willbyers)
                     sed_into_node[flow_receiver[i]] += vol_pass
                     if np.any(sed_into_node < 0):
                         print("we got a zero in qs_in, line 465")

@@ -866,6 +866,8 @@ class SedDepEroder(Component):
                 # values sent to the component instead.
                 if self._lateral_erosion_active:
                     sed_into_node = self._grid.at_node["lateral_sediment__flux"]
+                    # sed_into_node = self._grid.at_node["lateral_sediment__flux"]
+
                 else:
                     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 if self._inlet_node_ID is not None:
