@@ -262,14 +262,6 @@ class ValleyWiden(Component):
                         tau_crit = block_size[lat_node]*self.g * (self.sed_density - self.fluid_density) * self.shields_thresh
                         #calc, can blocks be transported?
                         if channel__bed_shear_stress[i] > tau_crit:
-                            if debug3 and lat_node == 366:
-                                print(" ")
-                                print("depth_at_node", depth_at_node)
-                                print("lat_node", lat_node)
-                                print("blocks can transport")
-                                print("tau", channel__bed_shear_stress[i])
-                                print("taucrit", tau_crit)
-    #                            print(frog)
                             #if blocks transported, do it.
                             # volume of pile of stuff
                             #may 10, 2022, changed this to the pile volume between the node that is downstream of 
@@ -279,13 +271,6 @@ class ValleyWiden(Component):
                             # below is the conversion of trans capacity into m^3/model time step
                             transcap_here_ts = chan_trans_cap[i]*dt*self.sec_per_year
                             avail_trans_cap = transcap_here_ts * (1.0-rel_sed_flux[i])
-                            if debug3 and lat_node == 366:
-                                print(" ")
-                                print("pile volume", pile_volume)
-                                print("trans cap here", chan_trans_cap[i])
-                                print("transcaphere_ts", transcap_here_ts)
-                                print("avail trans cap", avail_trans_cap)
-                                print("dt", dt)
                             if avail_trans_cap >= pile_volume:
                                 #if all sediment from lateral erosion can be transported
                                 # by teh channel, send it all down stream
@@ -311,7 +296,9 @@ class ValleyWiden(Component):
                                 #may 10, 2022, changed this to the elevation diff between the node that is downstream of 
                                 # the primary node and lateral node, not elev diff between primary and lateral. 
                                 # plus half mm to prevent hole digging
-                                dzlat_ts[lat_node] = z[flow_receiver[i]] - z[lat_node] + 0.0005
+                                # dzlat_ts[lat_node] = z[flow_receiver[i]] - z[lat_node] + 0.0005
+                                #4 May 2026: changed this line from above. 
+                                dzlat_ts[lat_node] = z[lat_node] - z[i]
                                 #finally, reset block size to reflect fresh bedrock
                                 block_size[lat_node] = 0.0
                                 status_lat_nodes[lat_node] = 5
@@ -325,7 +312,7 @@ class ValleyWiden(Component):
                                 # pile as possible
                                 # note I use negative availtranscap to make dzlat a negative number
                                 # may 10, 2022. plus half mm to prevent hole digging
-                                dzlat_ts[lat_node] = max(-avail_trans_cap / grid.dx **2, (z[flow_receiver[i]] - z[lat_node] +0.0005))
+                                dzlat_ts[lat_node] = min(avail_trans_cap / grid.dx **2, (z[lat_node] - z[i]))
                                 # ^ this will give the elevation that can be removed from 
                                 # the pile of stuff that is the lateral node.
                                 # qs_in[flow_receiver[i]] += avail_trans_cap
@@ -343,20 +330,7 @@ class ValleyWiden(Component):
                                 # sediment  in m**3(no time scale in here, but this
                                 # is volume downstream over this timestep, dt)
                                 status_lat_nodes[lat_node] = 4
-                                if debug3 and lat_node == 438:
-                                    print("entire pile NOT transported")
-                            if debug3 and lat_node == 438:
-                                print(" ")
-                                print("downstream node", flow_receiver[i])
-                                print("qs_in[flow_receiver[i]]", qs_in[flow_receiver[i]])
-                                print("transcap", transcap_here_ts)
-                                print("relsedflux", rel_sed_flux[i])
-                                print("avail_trans_cap", avail_trans_cap)
-                                print("pile_vol", pile_volume)
-                                print("dzlat[latnode]", dzlat_ts[lat_node])
-                                print("z[latnode]",z[lat_node])
-                                print("z[i]",z[i])
-#                                print(frog)
+
                         #if blocks can't be transported: calc Elat, track undercutting
                         else:    # below is for blocks that can't be transported
                             petlat = -Kl[i] * node_A[i] * max_slopes[i] * inv_rad_curv
@@ -376,10 +350,6 @@ class ValleyWiden(Component):
                             if np.any(np.isnan(vol_pass))==True or vol_pass < 0:
                                 print("we got a nan in qs_in, line 347")
                                 print("vol_pass = ", vol_pass)
-
-                                print("time = ", precip.elapsed_time)
-                                toc=time.time()
-                                print("elapsed time = ", toc-tic)
                                 print(frog)
                             status_lat_nodes[lat_node] = 3
                             if debug3 and lat_node == 438:
@@ -400,36 +370,19 @@ class ValleyWiden(Component):
                         vol_lat_dt[lat_node] += abs(petlat) * grid.dx * depth_at_node[i]
                         vol_lat[lat_node] += vol_lat_dt[lat_node] * dt
 
-                        
-                        """
-                        # trying somethign new for voldiff
-                        vol diff is now going to be a percentage of the height of the
-                        lateral node. This si arbitrary. 
-                        So I'll go with when 20% of the lateral node volume has been eroded
-                        Then it can collapse for the first time. 
-                        Note, explanation above is form old code
-                        3/3/2026: FIX, how voldiff is calculated, check depth_at_node.
-                        depth_at_node is from dan's sed_flux component, along with trans capacity, etc.
-                        
-                        4/23/26: i currently have voldiff = (depth_at_node[i]) * grid.dx ** 2
-                        but i'm changing back to the original way with a percentage of the lateral node.'
-                        """
                         # vol_diff is the volume that must be eroded from lat_node so that its
                         # elevation is the same as primary node
                         voldiff = (z[lat_node] - z[i]) * grid.dx **2 * undercut_ero_factor
-
                         status_lat_nodes[lat_node] = 1
                         #^node status=1 means that now this br valley wall has experienced some erosion
-                        if debug:
-                            print("petlat_lateral", petlat*dt)
+
                         #*******WILL VALLEY WALL COLLAPSE for the first time?
                         if vol_lat[lat_node] >= voldiff:
                             #ALL***: ^now this line is just telling me: will this
                             # valley wall collapse?
-                            #*****************************
-                            #SOMETHING FUNKY GOING ON BELOW! CHECK!
-                            dzlat_ts[lat_node] = depth_at_node[i] * -1.0
-                            # ^ Change elevation of lateral node by the length undercut
+                            dzlat_ts[lat_node] = (z[lat_node] - z[i]) * undercut_ero_factor * -1
+                            # ^ Change elevation of lateral node by the difference in height
+                            # of nodes * undercut factor. NOTE dzlat_ts must be negative!!!!!!
                             vol_lat[lat_node] = 0.0
                             # ^after the lateral node is eroded, reset its volume eroded to
                             # zero
@@ -439,34 +392,7 @@ class ValleyWiden(Component):
                         # send sediment downstream. for bedrock erosion only
                         # qs_in[flow_receiver[i]] += (abs(petlat) * grid.dx * depth_at_node[i]) * dt
                         vol_pass = (abs(petlat) * grid.dx * depth_at_node[i]) * dt
-                        # if np.any(np.isnan(qs_in))==True:
-                        if np.any(np.isnan(vol_pass))==True or vol_pass < 0:
 
-                                print("we got a nan in qs_in, line 397")
-                                print("vol_pass = ", vol_pass)
-                                print(" ")
-                                print("downstream node", flow_receiver[i])
-                                print("qs_in[flow_receiver[i]]", qs_in[flow_receiver[i]])
-                                print("petlat", petlat)
-                                print("depth_at_nodes", depth_at_node[i])
-                                print("transcap", transcap_here_ts)
-                                print("relsedflux", rel_sed_flux[i])
-                                print("avail_trans_cap", avail_trans_cap)
-                                print("pile_vol", pile_volume)
-                                print("dzlat[latnode]", dzlat_ts[lat_node])
-                                print("z[latnode]",z[lat_node])
-                                print("z[i]",z[i])
-                                print(" ")
-                                print("pile volume", pile_volume)
-                                print("trans cap here", chan_trans_cap[i])
-                                print("transcaphere_ts", transcap_here_ts)
-                                print("avail trans cap", avail_trans_cap)
-                                print("dt", dt)
-                                print("time = ", precip.elapsed_time)
-                                toc=time.time()
-                                print("elapsed time = ", toc-tic)
-                                print(frog)
-                                
                     #below is where sed_into_node is updated
                     # print("in lat ero, vol_pass = ", vol_pass)
                     # print(" ")
