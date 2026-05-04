@@ -868,13 +868,13 @@ class SedDepEroder(Component):
                     sed_into_node = self._grid.at_node["lateral_sediment__flux"]
                 else:
                     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)                                                                       
-                    for (
-                        number_counter,
-                        i,
-                    ) in enumerate(s_in[::-1]):
-                        # if self.cumu_time >70 and node_A[i] > 0.0:
-                        #     print("area at node "+str(i)+ " = " + str(node_A[i]))
-                sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
+                #     for (
+                #         number_counter,
+                #         i,
+                #     ) in enumerate(s_in[::-1]):
+                #         # if self.cumu_time >70 and node_A[i] > 0.0:
+                #         #     print("area at node "+str(i)+ " = " + str(node_A[i]))
+                # sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self._cell_areas
                 try:
@@ -1005,7 +1005,6 @@ class SedDepEroder(Component):
                         sed_into_node[flow_receiver[i]] += vol_pass
 
                 break_flag = True
-
                 node_z[grid.core_nodes] += dz[grid.core_nodes]
 
                 if break_flag:
@@ -1019,7 +1018,7 @@ class SedDepEroder(Component):
                     core_draining_nodes
                 ] / link_length[core_draining_nodes]
                 internal_t += dt_this_step  # still in seconds, remember
-
+#%%
         elif self._Qc == "power_law":
             transport_capacity_prefactor_withA = self._Kt * node_A**self._mt
             erosion_prefactor_withA = self._K_unit_time * node_A**self._m
