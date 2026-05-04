@@ -86,8 +86,8 @@ class ValleyWiden(Component):
         Qs_power_onAthresh = 0.33333333333333,    #from sedflux dep eroder
         Qs_prefactor = 3.5972042802486196e-7,    #from sedflux dep eroder
         Qs_power_onA = 0.6333333333333333,    #from sedflux dep eroder
-        inlet_node_ID=None,
-        inlet_sedflux=None
+        # inlet_node_ID=None,
+        # inlet_sedflux=None
     ):
         super(ValleyWiden, self).__init__(grid)
 
@@ -204,11 +204,11 @@ class ValleyWiden(Component):
         z = grid.at_node["topographic__elevation"]
         self.cumu_time += dt
         # clear qsin for next loop
-        if "inlet_sediment__flux" in grid.at_node:
+        # if "inlet_sediment__flux" in grid.at_node:
             # qs_in = np.copy(self._grid.at_node["inlet_sediment__flux"])
-            qs_in = np.copy(self._qs_in_inlet)
-        else:
-            qs_in = grid.add_zeros("node", "lateral_sediment__flux", clobber=True)
+            # qs_in = np.copy(self._qs_in_inlet)
+        # else:
+        _ = grid.add_zeros("node", "lateral_sediment__flux", clobber=True)
 
         lat_nodes = np.zeros(grid.number_of_nodes, dtype=int)
         status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node", clobber=True)#, noclobber=False)
