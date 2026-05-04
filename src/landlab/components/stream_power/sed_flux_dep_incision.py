@@ -867,14 +867,11 @@ class SedDepEroder(Component):
                 if self._lateral_erosion_active:
                     sed_into_node = self._grid.at_node["lateral_sediment__flux"]
                 else:
-                    sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)                                                                       
-                #     for (
-                #         number_counter,
-                #         i,
-                #     ) in enumerate(s_in[::-1]):
-                #         # if self.cumu_time >70 and node_A[i] > 0.0:
-                #         #     print("area at node "+str(i)+ " = " + str(node_A[i]))
-                # sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
+                    sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
+                if self._inlet_node_ID is not None:
+                    sed_into_node[self._inlet_node_ID] = self._inlet_sedflux
+                    print("in sedfluxdep. inlet sed = ", self._inlet_sedflux)
+                    print(frog)
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self._cell_areas
                 try:
