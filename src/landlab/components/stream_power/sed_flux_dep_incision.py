@@ -726,7 +726,7 @@ class SedDepEroder(Component):
         node_A = self._A/self._runoff_rate
         # node_A = grid.at_node["drainage_area"]
         if self._inlet_node_ID is not None:
-            print(" ")
+            # print(" ")
 
             al_hack_factor = self._runoff_rate[self._inlet_node_ID]/self._runoff_rate[0]
             # print("runoff rate before = ",self._runoff_rate[self._inlet_node_ID] )
@@ -872,8 +872,8 @@ class SedDepEroder(Component):
                     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 if self._inlet_node_ID is not None:
                     sed_into_node[self._inlet_node_ID] = self._inlet_sedflux
-                    print("in sedfluxdep. inlet sed = ", self._inlet_sedflux)
-                    print(frog)
+                    # print("in sedfluxdep. inlet sed = ", self._inlet_sedflux)
+                    # print(frog)
                 dz = np.zeros(grid.number_of_nodes, dtype=float)
                 cell_areas = self._cell_areas
                 try:
