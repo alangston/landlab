@@ -723,12 +723,16 @@ class SedDepEroder(Component):
         grid = self._grid
         node_z = grid.at_node["topographic__elevation"]
         # 3/3/2026
+        # print("self._A", self._A[1463])
+        # print("self._runoffrate", self._runoff_rate[1463])
         node_A = self._A/self._runoff_rate
         # node_A = grid.at_node["drainage_area"]
         if self._inlet_node_ID is not None:
             # print(" ")
 
             al_hack_factor = self._runoff_rate[self._inlet_node_ID]/self._runoff_rate[0]
+            # print("runoff[inlet]", self._runoff_rate[self._inlet_node_ID])
+            # print("nodeA inlet = ", node)
             # print("runoff rate before = ",self._runoff_rate[self._inlet_node_ID] )
             # print("node A before = ", node_A[self._inlet_node_ID])
             # print("1412 runoff rate before = ",self._runoff_rate[1412] )
