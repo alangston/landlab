@@ -249,7 +249,7 @@ class SedDepEroder(Component):
         # flooded node info
         flooded_depths=None,
         inlet_node_ID=None,
-        inlet_rel_sed_flux=None,
+        inlet_sed_flux=None,
         lateral_erosion_active = False
     ):
         """Constructor for the class.
@@ -383,7 +383,7 @@ class SedDepEroder(Component):
                 "to start this process."
             )
         self._inlet_node_ID = inlet_node_ID
-        self._inlet_rel_sed_flux = inlet_rel_sed_flux
+        self._inlet_sed_flux = inlet_sed_flux
         self._lateral_erosion_active = lateral_erosion_active
         
         self._flooded_depths = flooded_depths
@@ -875,8 +875,9 @@ class SedDepEroder(Component):
                 else:
                     sed_into_node = np.zeros(grid.number_of_nodes, dtype=float)
                 if self._inlet_node_ID is not None:
-                    sed_into_node[self._inlet_node_ID] = self._inlet_rel_sed_flux * node_vol_capacities[self._inlet_node_ID]
-                    
+                    # sed_into_node[self._inlet_node_ID] = self._inlet_rel_sed_flux * node_vol_capacities[self._inlet_node_ID]
+                    sed_into_node[self._inlet_node_ID] = self._inlet_sed_flux 
+
                     # print("in sedfluxdep. transportcap[49] = ", transport_capacities[49])
                     # print("in sedfluxdep. node_vol_cap[49] = ", node_vol_capacities[49])
                     # print("in sedflux, calc for sediment: ", node_vol_capacities[49]*0.96)
