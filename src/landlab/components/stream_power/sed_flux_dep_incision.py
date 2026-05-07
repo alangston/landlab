@@ -877,6 +877,11 @@ class SedDepEroder(Component):
                 if self._inlet_node_ID is not None:
                     # sed_into_node[self._inlet_node_ID] = self._inlet_rel_sed_flux * node_vol_capacities[self._inlet_node_ID]
                     sed_into_node[self._inlet_node_ID] = self._inlet_sed_flux 
+                    """
+                    Note to self, May 7, 2026: i have to make a hard switch here to use the relative sediment flux. 
+                    when below is commented IN, then i'm giving it a relative sedimetn flux with the inlet_sed_flux parameter
+                    """
+                    sed_into_node[self._inlet_node_ID] = self._inlet_sed_flux * node_vol_capacities[self._inlet_node_ID]
 
                     # print("in sedfluxdep. transportcap[49] = ", transport_capacities[49])
                     # print("in sedfluxdep. node_vol_cap[49] = ", node_vol_capacities[49])
