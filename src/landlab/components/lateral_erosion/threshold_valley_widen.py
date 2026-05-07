@@ -427,59 +427,59 @@ class ValleyWiden(Component):
 #        print("z in lat", z)
         return grid
 
-def calc_new_transport_capacities(self, grid, Dchar):
-    """
-    Below is using model outputs to calculate transport capacities. I need this to calculate
-    different transport capacities for different grain sizes. 
-    the line numbers below refer to places in teh sed_flux_dep_incision code that 
-    do those calculations. 
-    """
-    # line 512 from SedDepEroder
-    shields_thresh = self.shields_thresh
-    g = self.g
-    sed_density = self.sed_density
-    fluid_density = self.fluid_density
-    Qs_thresh_prefactor = self._Qs_thresh_prefactor
-    Qs_power_onAthresh = self._Qs_power_onAthresh
-    Qs_power_onA = self._Qs_power_onA
-    Qs_prefactor = self._Qs_prefactor
-    b_sde = self._b_sde
-    runoff_rate = grid.at_node["water__unit_flux_in"]
-    # print("Dchar", Dchar)
-    # print("g", g)
-    # print("runoff rate", runoff_rate)
-    thresh_from_Dchar = (
-        shields_thresh
-        * g
-        * (sed_density - fluid_density)
-        * Dchar
-    )
-    # line 777 from SedDepEroder    
-    node_A = grid.at_node["drainage_area"]
-    node_A = grid.at_node["surface_water__discharge"]
-
-    node_S = grid.at_node["topographic__steepest_slope"]
-    transport_capacities_thresh = (
-    thresh_from_Dchar
-    * Qs_thresh_prefactor
-    * runoff_rate ** (0.66667 * b_sde)
-    * node_A**Qs_power_onAthresh
-    )
-    #line 791 from SedDepEroder
-    transport_capacity_prefactor_withA = (
-    Qs_prefactor
-    * runoff_rate ** (0.6 + b_sde / 15.0)
-    * node_A**Qs_power_onA
-    )
+    def calc_new_transport_capacities(self, grid, Dchar):
+        """
+        Below is using model outputs to calculate transport capacities. I need this to calculate
+        different transport capacities for different grain sizes. 
+        the line numbers below refer to places in teh sed_flux_dep_incision code that 
+        do those calculations. 
+        """
+        # line 512 from SedDepEroder
+        shields_thresh = self.shields_thresh
+        g = self.g
+        sed_density = self.sed_density
+        fluid_density = self.fluid_density
+        Qs_thresh_prefactor = self._Qs_thresh_prefactor
+        Qs_power_onAthresh = self._Qs_power_onAthresh
+        Qs_power_onA = self._Qs_power_onA
+        Qs_prefactor = self._Qs_prefactor
+        b_sde = self._b_sde
+        runoff_rate = grid.at_node["water__unit_flux_in"]
+        # print("Dchar", Dchar)
+        # print("g", g)
+        # print("runoff rate", runoff_rate)
+        thresh_from_Dchar = (
+            shields_thresh
+            * g
+            * (sed_density - fluid_density)
+            * Dchar
+        )
+        # line 777 from SedDepEroder    
+        node_A = grid.at_node["drainage_area"]
+        node_A = grid.at_node["surface_water__discharge"]
     
-    #line 812 from SedDepEroder
-    downward_slopes = node_S.clip(0.0)
-    slopes_tothe07 = downward_slopes**0.7
-    transport_capacities_S = (
-    transport_capacity_prefactor_withA * slopes_tothe07
-    )
-    trp_diff = (transport_capacities_S - transport_capacities_thresh).clip(
-    0.0
-    )
-    transport_capacities = np.sqrt(trp_diff * trp_diff * trp_diff)
-    return transport_capacities
+        node_S = grid.at_node["topographic__steepest_slope"]
+        transport_capacities_thresh = (
+        thresh_from_Dchar
+        * Qs_thresh_prefactor
+        * runoff_rate ** (0.66667 * b_sde)
+        * node_A**Qs_power_onAthresh
+        )
+        #line 791 from SedDepEroder
+        transport_capacity_prefactor_withA = (
+        Qs_prefactor
+        * runoff_rate ** (0.6 + b_sde / 15.0)
+        * node_A**Qs_power_onA
+        )
+        
+        #line 812 from SedDepEroder
+        downward_slopes = node_S.clip(0.0)
+        slopes_tothe07 = downward_slopes**0.7
+        transport_capacities_S = (
+        transport_capacity_prefactor_withA * slopes_tothe07
+        )
+        trp_diff = (transport_capacities_S - transport_capacities_thresh).clip(
+        0.0
+        )
+        transport_capacities = np.sqrt(trp_diff * trp_diff * trp_diff)
+        return transport_capacities
