@@ -275,6 +275,9 @@ class SpaceLargeScaleEroder(Component):
         discharge_field="surface_water__discharge",
         erode_flooded_nodes=False,
         thickness_lim=100.0,
+        inlet_node_ID=None,
+        inlet_sed_flux=None,
+        lateral_erosion_active = False
     ):
         """Initialize the SpaceLargeScaleEroder model.
 
@@ -379,7 +382,11 @@ class SpaceLargeScaleEroder(Component):
 
         self._qs = grid.at_node["sediment__outflux"]
         self._q = return_array_at_node(grid, discharge_field)
-
+        
+        self._inlet_node_ID = inlet_node_ID
+        self._inlet_sed_flux = inlet_sed_flux
+        self._lateral_erosion_active = lateral_erosion_active
+        
         # for backward compatibility (remove in 3.0.0+)
         grid.at_node["sediment__flux"] = grid.at_node["sediment__outflux"]
 
@@ -557,11 +564,13 @@ class SpaceLargeScaleEroder(Component):
         self._br_erosion_term[flooded_nodes] = 0.0
         """
         AL 30april2026: note that the below DOES work with lateral erosion. 
-        Also, if you want to have an inlet with sediment flux, you have to instantiate
-        lateral erosion simply to use the lateral sediment influx. But then don't
-        actually use lateral erosion in teh driver file.
+        ALL***: below, if we send sediment to vertical erosion because lateral
+        erosion is running, use lateral sediment influx instead of sediment influx
+        Note also that lateral erosion active must be actively switched on when
+        lateral space is instatiated. If no lateral erosion, sediment influx is
+        reset to zero
         """
-        if "lateral_sediment__influx" in self.grid.at_node:
+        if self._lateral_erosion_active:
             self.sediment_influx[:] = self.grid.at_node["lateral_sediment__influx"]
             #print("in space, lateral sedflux detected")
             #print("max lateral sedflux = ", max(self.sediment_influx))
@@ -569,6 +578,8 @@ class SpaceLargeScaleEroder(Component):
             self.sediment_influx[:] = 0
             # print("in space, NO lateral sedflux detected")
             # print("max no lateral  sedflux = ", max(self.sediment_influx))
+        if self._inlet_node_ID is not None:
+            self.sediment__influx[self._inlet_node_ID] = self._inlet_sed_flux
 
         K_sed_vector = np.broadcast_to(self._K_sed, self._q.shape)
 
