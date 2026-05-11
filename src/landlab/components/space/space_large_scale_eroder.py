@@ -586,8 +586,8 @@ class SpaceLargeScaleEroder(Component):
                 self.sediment_influx[self._inlet_node_ID] = self._inlet_sed_flux
             else:
                 self.sediment_influx[self._inlet_node_ID] = self.grid.at_node["inlet_sediment_flux"][self._inlet_node_ID]
-                print("in space, inlet sed flux = ", self.grid.at_node["inlet_sediment_flux"][self._inlet_node_ID])
-                print(frog)
+                # print("in space, inlet sed flux = ", self.grid.at_node["inlet_sediment_flux"][self._inlet_node_ID])
+                # print(frog)
         K_sed_vector = np.broadcast_to(self._K_sed, self._q.shape)
 
         ero_sed_effective = np.zeros_like(K_sed_vector)
