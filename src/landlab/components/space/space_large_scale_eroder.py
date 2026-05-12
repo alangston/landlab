@@ -576,7 +576,7 @@ class SpaceLargeScaleEroder(Component):
             #print("max lateral sedflux = ", max(self.sediment_influx))
         else:
             self.sediment_influx[:] = 0
-            print("in space, NO lateral sedflux detected")
+            # print("in space, NO lateral sedflux detected")
             # print("max no lateral  sedflux = ", max(self.sediment_influx))
         if self._inlet_node_ID is not None:
             """May 8, 2026: added the below for inlet sediment flux to allow the inlet sed flux
@@ -586,16 +586,17 @@ class SpaceLargeScaleEroder(Component):
                 self.sediment_influx[self._inlet_node_ID] = self._inlet_sed_flux
             else:
                 self.sediment_influx[self._inlet_node_ID] = self.grid.at_node["inlet_sediment_flux"][self._inlet_node_ID]
-                print("in space, inlet sed flux = ", self.grid.at_node["inlet_sediment_flux"][self._inlet_node_ID])
-                print("in space, sed flux at inlet node= ", self.sediment_influx[self._inlet_node_ID])
-                print(" ")
+                # print("in space, inlet sed flux = ", self.grid.at_node["inlet_sediment_flux"][self._inlet_node_ID])
+                # print("in space, sed flux at inlet node= ", self.sediment_influx[self._inlet_node_ID])
+                # print(" ")
 
                 # print(frog)
         K_sed_vector = np.broadcast_to(self._K_sed, self._q.shape)
 
         ero_sed_effective = np.zeros_like(K_sed_vector)
         depo_effective = np.zeros_like(K_sed_vector)
-
+        # print("in space, sed flux at inlet node= ", self.sediment_influx[self._inlet_node_ID])
+        # print(" ")
         vol_SSY_riv = _sequential_ero_depo(
             stack_flip_ud_sel,
             r,
