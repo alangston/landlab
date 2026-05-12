@@ -26,7 +26,7 @@ wid_exp = 0.35  # exponent for calculating channel width
 class LateralErosionSedDep(Component):
     """
     Laterally erode neighbor node through fluvial erosion AND add volume of
-    collapsed bedrock to channel as sediment of a specified size (Dchar).
+    collapsed bedrock to channel as sediment to feed into space.
 
 
     Parameters
@@ -35,8 +35,7 @@ class LateralErosionSedDep(Component):
         A Landlab square cell raster grid object
     Kl : float
         Lateral bedrock erodibility, units  1/years
-    Dchar : float
-        Characteristic sediment grain size bedrock breaks up into, units m
+
     solver : string
         Solver options:
             (1) 'basic' (default): explicit forward-time extrapolation.
@@ -74,7 +73,6 @@ class LateralErosionSedDep(Component):
         self,
         grid,
         Kl=None,
-        Dchar=None,
         discharge_field="surface_water__discharge",
         solver="basic",
         flow_accumulator=None,
@@ -109,11 +107,6 @@ class LateralErosionSedDep(Component):
                 "Kl must be set as a float, node array, or field name. It was None."
             )
             
-        if Dchar is None:
-            raise ValueError(
-                "Dchar (charactertistic block size) must be set as a float, node array, or field name. It was None."
-            )
-            
         if solver == "adaptive":
             if not isinstance(flow_accumulator, FlowAccumulator):
                 raise ValueError(
@@ -146,10 +139,6 @@ class LateralErosionSedDep(Component):
             self._status_lat_nodes = grid.at_node["status_lat_nodes"]
         else:
             self._status_lat_nodes = grid.add_zeros("status_lat_nodes", at="node")
-        if "block_size" in grid.at_node:
-            self._block_size = grid.at_node["block_size"]
-        else:
-            self._block_size = grid.add_zeros("block_size", at="node")
         save_dzlat_ts = 1
         if save_dzlat_ts:
             if "dzlat_ts" in grid.at_node:
@@ -162,7 +151,6 @@ class LateralErosionSedDep(Component):
         elif solver == "adaptive":
             self.run_one_step = self.run_one_step_adaptive
         self._Kl = Kl  # can be overwritten with spatially variable
-        self._Dchar = Dchar
         self._K_sed = K_sed
 
         # handling Kv for floats (inwhich case it populates an array N_nodes long) or
@@ -210,8 +198,6 @@ class LateralErosionSedDep(Component):
         # depth_nans = np.where(np.isnan(self.grid.at_node["channel__depth"])==True)
         # depth_at_node[depth_nans] = 0.0
         
-        block_size = self._grid.at_node["block_size"]
-        Dchar = self._Dchar
         """
         6october 2025: below, trying to decide how to handle inlet sediment and lateral erosion. 
         Maybe it doesn't matter if inlet sediment is zero here because there won't be any vertical erosion there.
