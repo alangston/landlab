@@ -6,9 +6,10 @@
 :Authors: Greg Tucker, Nicole Gasparini, Erkan Istanbulluoglu, Daniel Hobley,
     Sai Nudurupati, Jordan Adams, Eric Hutton, Katherine Barnhart, Margaux
     Mouchene, Nathon Lyons
-:URL: https://landlab.readthedocs.io/en/release/
+:URL: https://landlab.csdms.io/
 :License: MIT
 """
+
 from landlab._registry import registry
 from landlab._version import __version__
 from landlab.core.errors import MissingKeyError

@@ -4,14 +4,11 @@ of discharge during flow.
 DEJH, late 2018
 """
 
-import sys
+from inspect import signature
 
 from landlab.components.flow_accum import FlowAccumulator
 from landlab.components.flow_accum import flow_accum_bw
 from landlab.components.flow_accum import flow_accum_to_n
-
-if sys.version_info[0] >= 3:
-    from inspect import signature
 
 
 class LossyFlowAccumulator(FlowAccumulator):
@@ -322,8 +319,8 @@ class LossyFlowAccumulator(FlowAccumulator):
     ):
         """Initialize the FlowAccumulator component.
 
-        Saves the grid, tests grid type, tests imput types and
-        compatability for the flow_director and depression_finder
+        Saves the grid, tests grid type, tests input types and
+        compatibility for the flow_director and depression_finder
         keyword arguments, tests the argument of runoff_rate, and
         initializes new fields.
 
@@ -331,7 +328,7 @@ class LossyFlowAccumulator(FlowAccumulator):
         ----------
         grid : ModelGrid
             A Landlab grid.
-        surface : str, int or array of int
+        surface : str, int or ndarray of int
             The surface to direct flow across.  Can be a field name at node or
             an array of length *node*.
         flow_director : str, class or instance of class.
@@ -339,8 +336,8 @@ class LossyFlowAccumulator(FlowAccumulator):
             uninstantiated FlowDirector class, or an instance of a
             :class:`FlowDirector` class. This sets the method
             used to calculate flow directions.
-        runoff_rate : field name, array, or float, optional (m/time)
-            If provided, sets the runoff rate and will be assigned to the grid
+        runoff_rate : str, ndarray, or float, optional
+            If provided, sets the runoff rate [m/time] and will be assigned to the grid
             field ``'water__unit_flux_in'``. If a spatially and and temporally variable
             runoff rate is desired, pass this field name and update the field
             through model run time. If both the field and argument are present at
@@ -371,7 +368,7 @@ class LossyFlowAccumulator(FlowAccumulator):
             verified during component instantiation.
         **kwargs : optional
             Any additional parameters to pass to a FlowDirector or
-            DepressionFinderAndRouter instance (e.g., partion_method for
+            DepressionFinderAndRouter instance (e.g., partition_method for
             FlowDirectorMFD). This will have no effect if an instantiated
             component is passed using the flow_director or depression_finder
             keywords.
@@ -393,11 +390,9 @@ class LossyFlowAccumulator(FlowAccumulator):
         )
 
         if loss_function is not None:
-            if sys.version_info[0] >= 3:
-                sig = signature(loss_function)
-                num_params = len(sig.parameters)
-            else:  # Python 2
-                num_params = loss_function.func_code.co_argcount
+            sig = signature(loss_function)
+            num_params = len(sig.parameters)
+
             # save the func for loss, and do a quick test on its inputs:
             if num_params == 1:
                 # check the func takes a single value and turns it into a new

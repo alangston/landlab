@@ -1,0 +1,25 @@
+name: "Build a binary distribution"
+inputs:
+  cibw-only:
+    required: true
+  upload-name:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Python 3.15
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.15
+        allow-prereleases: true
+
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v4.2.0
+      with:
+        only: ${{ inputs.cibw-only }}
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.upload-name }}
+        path: ${{ github.workspace }}/wheelhouse/*.whl
+        overwrite: true

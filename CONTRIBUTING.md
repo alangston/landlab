@@ -84,14 +84,14 @@ Changes to landlab should be submitted as
 
   * Rename the pull request and provide a comment that synthesizes what
     the pull request changes or adds. This helps us synthesize what
-    changes have occured between Landlab releases.
+    changes have occurred  between Landlab releases.
 
 ## Adding new components
 
 If you would like to create a new component, we a few conventions that we would
 like you to follow.
 
-Please visit [this part](https://landlab.readthedocs.io/en/master/development/index.html)
+Please visit [this part](https://landlab.csdms.io/install/)
 of the main Landlab documentation page to read about developer installation,
 guidelines to contributing code, and our software development practices.
 

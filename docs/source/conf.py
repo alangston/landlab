@@ -1,29 +1,34 @@
 import os
 import pathlib
-import re
 import sys
+import tomllib
+from dataclasses import dataclass
 from datetime import date
-
-import packaging
-import tomli
 
 
 def get_version_from_file(path):
-    with open(path) as fp:
-        match = re.search(r'__version__\s*=\s*[\'"]([^\'"]+)[\'"]', fp.read())
-        if match:
-            version = match.group(1)
-        else:
-            raise ValueError(f"version string not found ({path})")
-    return packaging.version.Version(version)
+    @dataclass
+    class Version:
+        major: int
+        minor: int = 0
+
+    with open(path, "rb") as fp:
+        metadata = tomllib.load(fp)
+    try:
+        version = metadata["project"]["version"]
+    except KeyError:
+        return None
+    parts = version.split(".")
+    return Version(major=int(parts[0]), minor=int(parts[1]))
 
 
-src_dir = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "src")
+root_dir = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
 )
+src_dir = os.path.join(root_dir, "src")
 sys.path.insert(0, src_dir)
 docs_dir = pathlib.Path(__file__).parent
-version_file = os.path.join(src_dir, "landlab", "_version.py")
+version_file = os.path.join(root_dir, "pyproject.toml")
 
 # -- General configuration -----------------------------------------------------
 
@@ -38,6 +43,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
     "sphinx_copybutton",
+    "sphinx_design",
     "sphinx_inline_tabs",
     "sphinxcontrib.towncrier",
     "sphinx_jinja",
@@ -52,19 +58,8 @@ source_suffix = ".rst"
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'
 
-# Regex for links that we know work in browser, but do not work in sphinx/CI
-# (BE VERY CAREFUL ADDING LINKS TO THIS LIST)
-if os.getenv("GITHUB_ACTIONS"):
-    linkcheck_ignore = [
-        # Added by KRB Dec 2019, at this point two links match this pattern
-        r"https://pubs.geoscienceworld.org/gsa/geology.*",
-        r"https://doi.org/10.1130/*",  # Added by KRB Jan 2019. Four links match this pattern
-        r"https://dx.doi.org/10.1029/2011jf002181",  # Added by EWHH April 2020
-        r"https://doi.org/10.1029/2019JB018596",  # Added by EWHH April 2020
-        r"https://doi.org/10.3133/pp294B",  # Added by EWHH September 2021
-        #     r"https://yaml.org/start.html",  # Added by EWHH September 2021
-    ]
-    linkcheck_retries = 5
+linkcheck_retries = 5
+linkcheck_ignore = [r"https://www.geosci-model-dev.net/.*"]
 
 master_doc = "index"
 
@@ -72,8 +67,8 @@ project = "landlab"
 copyright = str(date.today().year) + ", The Landlab Team"
 
 v = get_version_from_file(version_file)
-version = f"{v.major}.{v.minor}"
-release = v.public
+version = "master"
+release = f"{v.major}.{v.minor}"
 
 language = "en"
 
@@ -127,7 +122,6 @@ html_logo = "_static/landlab_logo.png"
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "announcement": "<em>Landlab 2.9 released!</em>",
     "source_repository": "https://github.com/landlab/landlab/",
     "source_branch": "master",
     "source_directory": "docs/source",
@@ -157,6 +151,13 @@ html_theme_options = {
         },
     ],
 }
+
+if "READTHEDOCS" in os.environ:
+    html_theme_options["announcement"] = (
+        "This documentation is hosted on Read the Docs only for testing. Please use"
+        " <a href='https://landlab.csdms.io'>the main documentation</a>"
+        " instead."
+    )
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
@@ -254,7 +255,7 @@ intersphinx_mapping = {
 }
 
 with open("../index.toml", "rb") as fp:
-    cats = tomli.load(fp)
+    cats = tomllib.load(fp)
 cats["grids"].pop("ModelGrid")
 
 jinja_contexts = {"llcats": cats}
@@ -273,12 +274,12 @@ with open(os.path.join(src_dir, "../cython-files.txt")) as fp:
 autodoc_mock_imports = [
     "richdem",
     "bmipy",
-    "importlib-resources",
     "matplotlib",
     "netcdf4",
     "pandas",
     "pyshp",
     "pyyaml",
+    "requireit",
     "rich-click",
     "scipy",
     "statsmodels",
@@ -312,13 +313,13 @@ nbsphinx_thumbnails = (
 
 # This is processed by Jinja2 and inserted before each notebook
 nbsphinx_prolog = """
-{% set docname = 'notebooks/' + env.doc2path(env.docname, base=None) %}
+{% set docname = 'docs/source/' + env.doc2path(env.docname, base=None) | string() %}
 
 .. note::
 
     This page was generated from a jupyter notebook_.
 
-.. _notebook: https://github.com/landlab/landlab/blob/{{ env.config.release|e }}/{{ docname|e }}
+.. _notebook: https://github.com/landlab/landlab/blob/{{ env.config.version|e }}/{{ docname|e }}
 """
 
 nbsphinx_epilog = """

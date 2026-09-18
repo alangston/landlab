@@ -6,8 +6,9 @@ OBJ functions
 
 .. autosummary::
 
-    ~landlab.io.obj.write_obj
+    ~write_obj
 """
+
 import os
 import pathlib
 

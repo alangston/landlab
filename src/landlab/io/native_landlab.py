@@ -6,8 +6,8 @@ Read Landlab native
 
 .. autosummary::
 
-    ~landlab.io.native_landlab.load_grid
-    ~landlab.io.native_landlab.save_grid
+    ~load_grid
+    ~save_grid
 """
 
 import os
@@ -55,7 +55,7 @@ def save_grid(grid, path, clobber=False):
     # test it's a grid
     assert issubclass(type(grid), ModelGrid)
 
-    (base, ext) = os.path.splitext(path)
+    base, ext = os.path.splitext(path)
     if ext != ".grid":
         ext = ext + ".grid"
     path = base + ext
@@ -95,7 +95,7 @@ def load_grid(path):
     ...     grid_in = load_grid(fname)
     ...
     """
-    (base, ext) = os.path.splitext(path)
+    base, ext = os.path.splitext(path)
     if ext != ".grid":
         ext = ext + ".grid"
     path = base + ext

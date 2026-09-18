@@ -1,18 +1,17 @@
-![[DOI][doi-link]][doi-badge]
-![[Documentation][rtd-link]][rtd-badge]
-![[Coverage][coveralls-link]][coveralls-badge]
-![[Testing][test-link]][test-badge]
-![[Lint][lint-link]][lint-badge]
+[![DOI][doi-badge]][doi-link]
+[![Documentation][rtd-badge]][rtd-link]
+[![Coverage][codecov-badge]][codecov-link]
+[![Testing][test-badge]][test-link]
+[![pre-commit.ci status][lint-badge]][lint-link]
 
-
-[coveralls-badge]: https://coveralls.io/repos/landlab/landlab/badge.png
-[coveralls-link]: https://coveralls.io/r/landlab/landlab
-[doi-badge]: https://zenodo.org/badge/DOI/10.5281/zenodo.3776837.svg
-[doi-link]: https://doi.org/10.5281/zenodo.3776837
-[lint-badge]: https://github.com/landlab/landlab/actions/workflows/lint.yml/badge.svg
-[lint-link]: https://github.com/landlab/landlab/actions/workflows/lint.yml
+[codecov-badge]: https://codecov.io/gh/landlab/landlab/graph/badge.svg
+[codecov-link]: https://codecov.io/gh/landlab/landlab
+[doi-badge]: https://zenodo.org/badge/DOI/10.5281/zenodo.595872.svg
+[doi-link]: https://doi.org/10.5281/zenodo.595872
+[lint-badge]: https://results.pre-commit.ci/badge/github/landlab/landlab/master.svg
+[lint-link]: https://results.pre-commit.ci/latest/github/landlab/landlab/master
 [rtd-badge]:https://readthedocs.org/projects/landlab/badge/?version=latest
-[rtd-link]: https://landlab.readthedocs.org
+[rtd-link]: https://landlab.csdms.io
 [test-badge]: https://github.com/landlab/landlab/actions/workflows/test.yml/badge.svg
 [test-link]: https://github.com/landlab/landlab/actions/workflows/test.yml
 
@@ -51,7 +50,7 @@ at CSDMS to learn more.
 
 ______________________________________________________________________
 
-[Read the documentation on ReadTheDocs!](https://landlab.readthedocs.io/)
+[Read the documentation on ReadTheDocs!](https://landlab.csdms.io/)
 
 ______________________________________________________________________
 
@@ -93,11 +92,17 @@ To launch a Binder instance that goes straight to the [teaching notebooks click 
 
 The Landlab notebooks can also be run on [EarthscapeHub].
 Visit this link to learn how to sign up for a free account.
-Explore the example notebooks on the
-[lab](https://lab.openearthscape.org/hub/user-redirect/git-pull?repo=https%3A%2F%2Fgithub.com%2Flandlab%2Flandlab&urlpath=lab%2Ftree%2Flandlab%2Fnotebooks%2Fwelcome.ipynb&branch=master) or [jupyter](https://jupyter.openearthscape.org/hub/user-redirect/git-pull?repo=https%3A%2F%2Fgithub.com%2Flandlab%2Flandlab&urlpath=lab%2Ftree%2Flandlab%2Fnotebooks%2Fwelcome.ipynb&branch=master) Hub instance.
-Or, use the teaching notebooks on the
-[lab](https://lab.openearthscape.org/hub/user-redirect/git-pull?repo=https%3A%2F%2Fgithub.com%2Flandlab%2Flandlab&urlpath=lab%2Ftree%2Flandlab%2Fnotebooks%2Fteaching%2Fwelcome_teaching.ipynb&branch=master) or [jupyter](https://jupyter.openearthscape.org/hub/user-redirect/git-pull?repo=https%3A%2F%2Fgithub.com%2Flandlab%2Flandlab&urlpath=lab%2Ftree%2Flandlab%2Fnotebooks%2Fteaching%2Fwelcome_teaching.ipynb&branch=master) Hub instance.
+Try the example notebooks on the [explore][explore-hub-example] or
+[jupyter][jupyter-hub-example] Hub instance.
+Or, use the teaching notebooks on the [explore][explore-hub-teaching] or
+[jupyter][jupyter-hub-teaching] Hub instance.
 Be sure to run all notebooks with the *CSDMS* kernel.
+
+[explore-hub-example]: https://explore.openearthscape.org/hub/user-redirect/git-pull?repo=https%3A%2F%2Fgithub.com%2Flandlab%2Flandlab&urlpath=lab%2Ftree%2Flandlab%2Fnotebooks%2Fwelcome.ipynb&branch=master&depth=1
+[explore-hub-teaching]: https://explore.openearthscape.org/hub/user-redirect/git-pull?repo=https%3A%2F%2Fgithub.com%2Flandlab%2Flandlab&urlpath=lab%2Ftree%2Flandlab%2Fnotebooks%2Fteaching%2Fwelcome_teaching.ipynb&branch=master&depth=1
+[jupyter-hub-example]: https://jupyter.openearthscape.org/hub/user-redirect/git-pull?repo=https%3A%2F%2Fgithub.com%2Flandlab%2Flandlab&urlpath=lab%2Ftree%2Flandlab%2Fnotebooks%2Fwelcome.ipynb&branch=master&depth=1
+[jupyter-hub-teaching]: https://jupyter.openearthscape.org/hub/user-redirect/git-pull?repo=https%3A%2F%2Fgithub.com%2Flandlab%2Flandlab&urlpath=lab%2Ftree%2Flandlab%2Fnotebooks%2Fteaching%2Fwelcome_teaching.ipynb&branch=master&depth=1
+
 
 ## License
 
@@ -122,16 +127,11 @@ The recommended way to contact the Landlab team is with a
   the most appropriate member of the core Landlab team. We will work to clarify
   your question and revise the documentation so that it is clear for the next user.
 
-Keep in touch with the latest *landlab* news by following us on [Twitter](https://twitter.com/landlabtoolkit).
-
-During workshops and clinics, we sometimes use the
-[Landlab Slack channel](https://landlab.slack.com).
-
 <!-- end-contact -->
 
-[citation guidelines]: https://landlab.readthedocs.io/en/master/citing.html
+[citation guidelines]: https://landlab.csdms.io/about/citing.html
 [earthscapehub]: https://csdms.colorado.edu/wiki/JupyterHub
 [explore the notebooks click here]: https://mybinder.org/v2/gh/landlab/landlab/master?filepath=notebooks/welcome.ipynb
-[install landlab from source]: https://landlab.readthedocs.io/en/master/install/developer_install.html
-[installation instructions]: https://landlab.readthedocs.io/en/master/installation.html
+[install landlab from source]: https://landlab.csdms.io/install/
+[installation instructions]: https://landlab.csdms.io/installation.html
 [teaching notebooks click here]: https://mybinder.org/v2/gh/landlab/landlab/master?filepath=notebooks/teaching/welcome_teaching.ipynb
